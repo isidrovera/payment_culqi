@@ -26,31 +26,37 @@
                        invisible="provider_code != 'culqi' or culqi_payment_method != 'card'"/>
             </xpath>
 
-            <!-- Información de PagoEfectivo -->
-            <group name="culqi_pagoefectivo" string="Información PagoEfectivo"
-                   invisible="provider_code != 'culqi' or culqi_payment_method != 'pagoefectivo'">
-                <field name="culqi_pagoefectivo_cip" readonly="1"/>
-                <field name="culqi_pagoefectivo_expiration" readonly="1"/>
-            </group>
+            <!-- Información adicional en el notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Información Culqi" name="culqi_info"
+                      invisible="provider_code != 'culqi'">
+                    
+                    <!-- Información de PagoEfectivo -->
+                    <group string="Información PagoEfectivo"
+                           invisible="culqi_payment_method != 'pagoefectivo'">
+                        <field name="culqi_pagoefectivo_cip" readonly="1"/>
+                        <field name="culqi_pagoefectivo_expiration" readonly="1"/>
+                    </group>
 
-            <!-- Información financiera Culqi -->
-            <group name="culqi_financial" string="Información Financiera Culqi"
-                   invisible="provider_code != 'culqi'">
-                <field name="culqi_fee" readonly="1"/>
-                <field name="culqi_net_amount" readonly="1"/>
-                <field name="culqi_installments" readonly="1"
-                       invisible="culqi_payment_method != 'cuotealo'"/>
-            </group>
+                    <!-- Información financiera Culqi -->
+                    <group string="Información Financiera">
+                        <field name="culqi_fee" readonly="1"/>
+                        <field name="culqi_net_amount" readonly="1"/>
+                        <field name="culqi_installments" readonly="1"
+                               invisible="culqi_payment_method != 'cuotealo'"/>
+                    </group>
 
-            <!-- Información técnica Culqi -->
-            <group name="culqi_technical" string="Información Técnica"
-                   invisible="provider_code != 'culqi'" groups="base.group_no_one">
-                <field name="culqi_creation_date" readonly="1"/>
-                <field name="culqi_outcome_type" readonly="1"/>
-                <field name="culqi_outcome_code" readonly="1"/>
-                <field name="culqi_email" readonly="1"/>
-                <field name="culqi_device_fingerprint" readonly="1"/>
-            </group>
+                    <!-- Información técnica Culqi -->
+                    <group string="Información Técnica" groups="base.group_no_one">
+                        <field name="culqi_creation_date" readonly="1"/>
+                        <field name="culqi_outcome_type" readonly="1"/>
+                        <field name="culqi_outcome_code" readonly="1"/>
+                        <field name="culqi_email" readonly="1"/>
+                        <field name="culqi_device_fingerprint" readonly="1"/>
+                    </group>
+                    
+                </page>
+            </xpath>
 
             <!-- Botón para ver en Culqi -->
             <xpath expr="//div[@name='button_box']" position="inside">
