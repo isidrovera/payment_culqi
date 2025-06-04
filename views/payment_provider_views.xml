@@ -7,6 +7,7 @@
         <field name="model">payment.provider</field>
         <field name="inherit_id" ref="payment.payment_provider_form"/>
         <field name="arch" type="xml">
+          
             <xpath expr="//field[@name='code']" position="after">
                 <group string="Configuración Culqi" invisible="code != 'culqi'">
                     
