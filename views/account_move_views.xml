@@ -23,11 +23,11 @@
 
                 <!-- Botón para pagar con Culqi -->
                 <button string="Pagar con Culqi"
-                        name="action_culqi_pay_invoice"
-                        type="object"
-                        class="btn-primary"
-                        invisible="not show_button_culqi"
-                        help="Generar link de pago con Culqi"/>
+        name="action_culqi_pay_invoice"
+        type="object"
+        class="btn-primary"
+        invisible="not show_button_culqi"/>
+
             </header>
 
             <!-- Campos adicionales después del journal -->
