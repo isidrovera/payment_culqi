@@ -70,36 +70,6 @@
 
 
 
-    <!-- Búsquedas para Culqi -->
-    <record id="payment_transaction_search_culqi" model="ir.ui.view">
-        <field name="name">payment.transaction.search.culqi</field>
-        <field name="model">payment.transaction</field>
-        <field name="inherit_id" ref="payment.payment_transaction_search"/>
-        <field name="arch" type="xml">
-            <xpath expr="//filter[@name='state_done']" position="after">
-                <separator/>
-                <filter string="Culqi" name="provider_culqi" domain="[('provider_code', '=', 'culqi')]"/>
-                <filter string="Tarjetas" name="culqi_cards" domain="[('provider_code', '=', 'culqi'), ('culqi_payment_method', '=', 'card')]"/>
-                <filter string="Yape" name="culqi_yape" domain="[('provider_code', '=', 'culqi'), ('culqi_payment_method', '=', 'yape')]"/>
-                <filter string="PagoEfectivo" name="culqi_pagoefectivo" domain="[('provider_code', '=', 'culqi'), ('culqi_payment_method', '=', 'pagoefectivo')]"/>
-            </xpath>
-            <xpath expr="//group" position="inside">
-                <filter string="Método de Pago Culqi" name="group_by_culqi_method" context="{'group_by': 'culqi_payment_method'}"/>
-            </xpath>
-        </field>
-    </record>
 
-    <!-- Acción para abrir transacciones Culqi -->
-    <record id="action_payment_transaction_culqi" model="ir.actions.act_window">
-        <field name="name">Transacciones Culqi</field>
-        <field name="res_model">payment.transaction</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('provider_code', '=', 'culqi')]</field>
-        <field name="context">{'search_default_provider_culqi': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">¡No hay transacciones Culqi todavía!</p>
-            <p>Las transacciones procesadas a través de Culqi aparecerán aquí.</p>
-        </field>
-    </record>
 
 </odoo>
