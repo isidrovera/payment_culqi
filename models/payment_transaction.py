@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 import json
 import hashlib
@@ -91,6 +89,52 @@ class PaymentTransaction(models.Model):
         string="Expiración PagoEfectivo",
         help="Fecha de expiración del CIP",
         readonly=True
+    )
+    
+    # Campos adicionales para integración completa
+    culqi_reminder_payment_id = fields.Many2one(
+        'account.payment', 
+        string="Culqi Reminder Payment", 
+        readonly=True,
+        help="Pago de recordatorio para métodos combinados"
+    )
+    
+    culqi_email = fields.Char(
+        string="Email del Cliente",
+        help="Email proporcionado para el pago"
+    )
+    
+    culqi_installments = fields.Integer(
+        string="Número de Cuotas",
+        help="Número de cuotas para Cuotéalo"
+    )
+    
+    culqi_device_fingerprint = fields.Char(
+        string="Device Fingerprint",
+        help="Huella digital del dispositivo para seguridad"
+    )
+    
+    # Campos adicionales para integración completa
+    culqi_reminder_payment_id = fields.Many2one(
+        'account.payment', 
+        string="Culqi Reminder Payment", 
+        readonly=True,
+        help="Pago de recordatorio para métodos combinados"
+    )
+    
+    culqi_email = fields.Char(
+        string="Email del Cliente",
+        help="Email proporcionado para el pago"
+    )
+    
+    culqi_installments = fields.Integer(
+        string="Número de Cuotas",
+        help="Número de cuotas para Cuotéalo"
+    )
+    
+    culqi_device_fingerprint = fields.Char(
+        string="Device Fingerprint",
+        help="Huella digital del dispositivo para seguridad"
     )
 
     # ==========================================
@@ -274,18 +318,86 @@ class PaymentTransaction(models.Model):
             _logger.error("Error en reembolso Culqi: %s", str(e))
             raise UserError(_("Error al procesar el reembolso: %s") % str(e))
 
-    def _create_refund_transaction(self, amount):
-        """Crea una transacción de reembolso"""
-        return self.create({
-            'reference': f"{self.reference}-refund-{fields.Datetime.now().strftime('%Y%m%d%H%M%S')}",
-            'provider_id': self.provider_id.id,
-            'provider_reference': f"refund-{self.provider_reference}",
-            'amount': -amount,  # Monto negativo para reembolso
-            'currency_id': self.currency_id.id,
-            'partner_id': self.partner_id.id,
-            'operation': 'refund',
-            'source_transaction_id': self.id,
-        })
+    def _create_payment(self, **extra_create_values):
+        """Método sobrescrito para crear pagos con integración de journals Culqi"""
+        if self.provider_id.code == 'culqi':
+            culqi_method = self.payment_method_id
+            if culqi_method and culqi_method.journal_id:
+                culqi_method_payment_code = culqi_method._get_journal_method_code()
+                payment_method_line = culqi_method.journal_id.inbound_payment_method_line_ids.filtered(
+                    lambda l: l.code == culqi_method_payment_code
+                )
+                extra_create_values['journal_id'] = culqi_method.journal_id.id
+                extra_create_values['payment_method_line_id'] = payment_method_line.id
+
+            # Manejo especial para métodos combinados (como PagoEfectivo + otro método)
+            if culqi_method.code in ['pagoefectivo', 'cuotealo']:
+                # Obtener información del pago desde Culqi
+                culqi_payment = self.provider_id._culqi_make_request(f'/charges/{self.provider_reference}', method='GET')
+                
+                # Si hay un método de recordatorio (pago combinado)
+                remainder_method_code = culqi_payment.get('source', {}).get('remainder_method')
+                if remainder_method_code:
+                    primary_journal = culqi_method.journal_id or self.provider_id.journal_id
+                    
+                    # Buscar método de recordatorio
+                    remainder_method = self.provider_id.payment_method_ids.filtered(
+                        lambda m: m.code == remainder_method_code
+                    )
+                    remainder_journal = remainder_method.journal_id or self.provider_id.journal_id
+
+                    # Si son journals diferentes, dividir el pago
+                    if primary_journal != remainder_journal:
+                        primary_amount = culqi_payment.get('source', {}).get('installment_amount_cents', 0) / 100
+                        remainder_amount = culqi_payment.get('amount_cents', 0) / 100 - primary_amount
+                        
+                        if primary_amount > 0:
+                            extra_create_values['amount'] = abs(primary_amount)
+
+                            # Crear pago de recordatorio
+                            remainder_payment_line = remainder_method.journal_id.inbound_payment_method_line_ids.filtered(
+                                lambda pm_line: pm_line.code == remainder_method._get_journal_method_code()
+                            )
+
+                            remainder_create_values = {
+                                **extra_create_values,
+                                'amount': remainder_amount,
+                                'payment_type': 'inbound' if self.amount > 0 else 'outbound',
+                                'currency_id': self.currency_id.id,
+                                'partner_id': self.partner_id.commercial_partner_id.id,
+                                'partner_type': 'customer',
+                                'journal_id': remainder_journal.id,
+                                'company_id': self.provider_id.company_id.id,
+                                'payment_method_line_id': remainder_payment_line.id,
+                                'payment_transaction_id': self.id,
+                                'memo': self.reference,
+                            }
+
+                            remainder_payment = self.env['account.payment'].create(remainder_create_values)
+                            remainder_payment.action_post()
+                            self.culqi_reminder_payment_id = remainder_payment
+
+        payment_record = super()._create_payment(**extra_create_values)
+
+        # Reconciliar pago de recordatorio con facturas si existe
+        if self.invoice_ids and self.culqi_reminder_payment_id:
+            (self.invoice_ids.line_ids + self.culqi_reminder_payment_id.line_ids).filtered(
+                lambda line: line.account_id == self.culqi_reminder_payment_id.destination_account_id and not line.reconciled
+            ).reconcile()
+
+        return payment_record
+
+    def _get_received_message(self):
+        """Método sobrescrito para añadir información del pago de recordatorio"""
+        self.ensure_one()
+
+        message = super()._get_received_message()
+        if message and self.state == 'done' and self.culqi_reminder_payment_id:
+            message += _(
+                "\nEl monto restante del pago fue registrado: %s",
+                self.culqi_reminder_payment_id._get_html_link()
+            )
+        return message
 
     # ==========================================
     # MÉTODOS DE INFORMACIÓN
@@ -320,6 +432,7 @@ class PaymentTransaction(models.Model):
             cip_info = f" (CIP: {self.culqi_pagoefectivo_cip})" if self.culqi_pagoefectivo_cip else ""
             return f"PagoEfectivo{cip_info}"
         elif self.culqi_payment_method == 'cuotealo':
-            return "Cuotéalo"
+            cuotas_info = f" ({self.culqi_installments} cuotas)" if self.culqi_installments else ""
+            return f"Cuotéalo{cuotas_info}"
         else:
             return self.culqi_payment_method or "Desconocido"

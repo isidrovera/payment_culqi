@@ -136,6 +136,11 @@ class PaymentProvider(models.Model):
     def _culqi_make_request(self, endpoint, data=None, method='POST'):
         """
         Realiza una petición HTTP a la API de Culqi
+        
+        :param endpoint: Endpoint de la API (ej: '/charges')
+        :param data: Datos a enviar en formato dict
+        :param method: Método HTTP (GET, POST, etc.)
+        :return: Respuesta de la API
         """
         self.ensure_one()
         
@@ -166,20 +171,13 @@ class PaymentProvider(models.Model):
             )
             
             _logger.info("Culqi API Response: %s", response.status_code)
-            _logger.debug("Culqi API Response Body: %s", response.text)  # Agregar esto para debug
             
             if response.status_code >= 400:
                 error_data = response.json() if response.content else {}
                 _logger.error("Culqi API Error: %s", error_data)
-                
-                # Mejorar el mensaje de error
-                if response.status_code == 401:
-                    raise UserError(_("Credenciales inválidas. Verifica tu Secret Key de Culqi."))
-                elif response.status_code == 400:
-                    error_msg = error_data.get('message', 'Petición inválida')
-                    raise UserError(_("Error en petición a Culqi: %s") % error_msg)
-                else:
-                    raise UserError(_("Error en la API de Culqi: %s") % error_data.get('message', 'Error desconocido'))
+                raise UserError(_(
+                    "Error en la API de Culqi: %s"
+                ) % error_data.get('message', 'Error desconocido'))
             
             return response.json()
             
@@ -192,11 +190,11 @@ class PaymentProvider(models.Model):
         self.ensure_one()
         
         try:
-            # Intentar listar charges existentes (endpoint más confiable)
-            result = self._culqi_make_request('/charges', method='GET')
+            # Intentar hacer una petición simple para validar credenciales
+            result = self._culqi_make_request('/plans', method='GET')
             return {
                 'success': True,
-                'message': _("Credenciales válidas - Conexión exitosa con Culqi")
+                'message': _("Credenciales válidas")
             }
         except Exception as e:
             return {
@@ -226,10 +224,10 @@ class PaymentProvider(models.Model):
 
     def _get_supported_currencies(self):
         """Retorna las monedas soportadas por Culqi"""
+        culqi_currencies = super()._get_supported_currencies()
         if self.code == 'culqi':
-            return self.env['res.currency'].search([('name', 'in', ['PEN', 'USD'])])
-        return super()._get_supported_currencies()
-
+            culqi_currencies = ['PEN', 'USD']  # Culqi soporta principalmente PEN y USD
+        return culqi_currencies
 
     def _get_validation_amount(self):
         """Monto mínimo para validación"""
@@ -263,15 +261,3 @@ class PaymentProvider(models.Model):
                 providers = providers.filtered(lambda p: p.code != 'culqi')
         
         return providers
-        
-    @api.depends('code')
-    def _compute_feature_support_fields(self):
-        """Compute the feature support fields based on the provider."""
-        super()._compute_feature_support_fields()
-        if self.code == 'culqi':
-            self.update({
-                'support_manual_capture': False,  # Culqi no soporta captura manual
-                'support_refund': 'partial',       # Culqi soporta reembolsos parciales
-                'support_tokenization': False,     # Por ahora sin tokenización
-                'support_express_checkout': False, # Sin express checkout
-            })

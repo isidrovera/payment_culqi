@@ -65,6 +65,95 @@ class PaymentMethod(models.Model):
         help="Monedas que soporta este método de pago"
     )
 
+    # Campo para integración con journals contables
+    journal_id = fields.Many2one(
+        'account.journal', 
+        string="Journal",
+        compute='_compute_journal_id', 
+        inverse='_inverse_journal_id',
+        domain="[('type', '=', 'bank')]",
+        help="Journal contable asociado a este método de pago"
+    )
+
+    def _compute_journal_id(self):
+        """Computa el journal asociado al método de pago Culqi"""
+        for culqi_method in self:
+            provider = culqi_method.provider_ids[:1]
+            if not provider or provider.code != 'culqi':
+                culqi_method.journal_id = False
+                continue
+            
+            payment_method = self.env['account.payment.method.line'].search([
+                ('code', '=', culqi_method._get_journal_method_code()),
+            ], limit=1)
+            
+            if payment_method:
+                culqi_method.journal_id = payment_method.journal_id
+            else:
+                culqi_method.journal_id = False
+
+    def _inverse_journal_id(self):
+        """Inversa del campo journal_id para crear/actualizar líneas de método de pago"""
+        for culqi_method in self:
+            provider = culqi_method.provider_ids[:1]
+            if not provider or provider.code != 'culqi':
+                continue
+
+            code = culqi_method._get_journal_method_code()
+            payment_method_line = self.env['account.payment.method.line'].search([
+                *self.env['account.payment.method.line']._check_company_domain(provider.company_id),
+                ('code', '=', code),
+            ], limit=1)
+
+            if culqi_method.journal_id:
+                if not payment_method_line:
+                    self._link_culqi_payment_method_to_journal(culqi_method)
+                else:
+                    payment_method_line.journal_id = culqi_method.journal_id
+            elif payment_method_line:
+                payment_method_line.unlink()
+
+    def _get_journal_method_code(self):
+        """Obtiene el código del método para usar en journals"""
+        self.ensure_one()
+        return f'culqi_{self.code}'
+
+    def _link_culqi_payment_method_to_journal(self, culqi_method):
+        """Vincula el método de pago Culqi a un journal"""
+        provider = culqi_method.provider_ids[:1]
+        default_payment_method_id = culqi_method._get_default_culqi_payment_method_id(culqi_method)
+        
+        existing_payment_method_line = self.env['account.payment.method.line'].search([
+            *self.env['account.payment.method.line']._check_company_domain(provider.company_id),
+            ('payment_method_id', '=', default_payment_method_id),
+            ('journal_id', '=', culqi_method.journal_id.id)
+        ], limit=1)
+
+        if not existing_payment_method_line:
+            self.env['account.payment.method.line'].create({
+                'payment_method_id': default_payment_method_id,
+                'journal_id': culqi_method.journal_id.id,
+            })
+
+    @api.model
+    def _get_default_culqi_payment_method_id(self, culqi_method):
+        """Obtiene o crea el método de pago por defecto para Culqi"""
+        provider_payment_method = self._get_provider_payment_method(culqi_method._get_journal_method_code())
+        
+        if not provider_payment_method:
+            provider_payment_method = self.env['account.payment.method'].sudo().create({
+                'name': f'Culqi {culqi_method.name}',
+                'code': culqi_method._get_journal_method_code(),
+                'payment_type': 'inbound',
+            })
+        
+        return provider_payment_method.id
+
+    @api.model
+    def _get_provider_payment_method(self, code):
+        """Busca un método de pago existente por código"""
+        return self.env['account.payment.method'].search([('code', '=', code)], limit=1)
+
     @api.model
     def _get_culqi_payment_methods(self):
         """Retorna los métodos de pago disponibles para Culqi"""
@@ -107,6 +196,79 @@ class PaymentMethod(models.Model):
             },
         ]
 
+    def _get_compatible_payment_methods(
+        self, provider_ids, partner_id, currency_id=None, force_tokenization=False,
+        is_express_checkout=False, report=None, **kwargs
+    ):
+        """Busca y retorna métodos de pago compatibles con Culqi"""
+        
+        result_pms = super()._get_compatible_payment_methods(
+            provider_ids, partner_id, currency_id=currency_id, force_tokenization=force_tokenization,
+            is_express_checkout=is_express_checkout, report=report, **kwargs
+        )
+
+        if not provider_ids:
+            return result_pms
+
+        # Todos los métodos Culqi activos del proveedor
+        culqi_providers = self.env['payment.provider'].browse(provider_ids).filtered(
+            lambda provider: provider.code == 'culqi'
+        )
+        culqi_active_pms = culqi_providers.mapped('payment_method_ids')
+
+        if not culqi_providers:
+            return result_pms
+
+        def is_culqi_method(method):
+            return method.provider_ids.filtered(lambda p: p.id in provider_ids)[:1].code == 'culqi'
+
+        # Métodos Culqi del resultado super
+        culqi_result_pms = result_pms.filtered(lambda m: is_culqi_method(m))
+        non_culqi_pms = result_pms - culqi_result_pms
+
+        # Métodos Culqi que necesitamos filtrar
+        culqi_allowed_methods = culqi_active_pms - non_culqi_pms
+
+        # Filtrar según configuración del proveedor y contexto
+        extra_params = {'includeWallets': 'yape'}
+        
+        if kwargs.get('sale_order_id'):
+            order_sudo = self.env['sale.order'].browse(kwargs['sale_order_id']).sudo()
+            extra_params['amount'] = {'value': "%.2f" % order_sudo.amount_total, 'currency': order_sudo.currency_id.name}
+            if order_sudo.partner_invoice_id.country_id:
+                extra_params['billingCountry'] = order_sudo.partner_invoice_id.country_id.code
+
+        if not kwargs.get('sale_order_id') and kwargs.get('invoice_id'):
+            invoice_id = kwargs.get('invoice_id')
+            invoice = self.env['account.move'].sudo().browse(int(invoice_id))
+            amount_payment_link = float(kwargs.get('amount', '0'))
+            
+            if invoice.exists():
+                extra_params['amount'] = {'value': "%.2f" % (amount_payment_link or invoice.amount_residual), 'currency': invoice.currency_id.name}
+                if invoice.partner_id.country_id:
+                    extra_params['billingCountry'] = invoice.partner_id.country_id.code
+
+        partner = self.env['res.partner'].browse(partner_id)
+        if not extra_params.get('billingCountry') and partner.country_id:
+            extra_params['billingCountry'] = partner.country_id.code
+
+        # Filtrar métodos según disponibilidad en Culqi (simulado)
+        # En un caso real, aquí se haría una llamada a la API de Culqi
+        # Por ahora, filtramos según la configuración del proveedor
+        
+        filtered_methods = self.env['payment.method']
+        for method in culqi_allowed_methods:
+            if method.culqi_payment_type == 'card' and culqi_providers.culqi_enable_cards:
+                filtered_methods |= method
+            elif method.culqi_payment_type == 'yape' and culqi_providers.culqi_enable_yape:
+                filtered_methods |= method
+            elif method.culqi_payment_type == 'pagoefectivo' and culqi_providers.culqi_enable_pagoefectivo:
+                filtered_methods |= method
+            elif method.culqi_payment_type == 'cuotealo' and culqi_providers.culqi_enable_cuotealo:
+                filtered_methods |= method
+
+        return (non_culqi_pms | filtered_methods)
+
     def _is_compatible_provider(self, provider):
         """Verifica si el método es compatible con el proveedor"""
         res = super()._is_compatible_provider(provider)
@@ -124,7 +286,26 @@ class PaymentMethod(models.Model):
         
         return res
 
-    def _get_culqi_payment_form_data(self, amount, currency):
+    def _get_inline_form_xml_id(self, original_xml_id, provider_sudo):
+        """Obtiene el ID del template de formulario inline"""
+        self.ensure_one()
+        inline_form_xml_id = original_xml_id
+        
+        if provider_sudo.code == 'culqi':
+            # Formulario específico para tarjetas Culqi
+            if self.code == 'card' and provider_sudo.culqi_checkout_mode == 'embedded':
+                inline_form_xml_id = 'payment_culqi.culqi_card_form'
+            # Formularios para otros métodos específicos
+            elif self.code == 'yape':
+                inline_form_xml_id = 'payment_culqi.culqi_yape_form'
+            elif self.code == 'pagoefectivo':
+                inline_form_xml_id = 'payment_culqi.culqi_pagoefectivo_form'
+            elif self.code == 'cuotealo':
+                inline_form_xml_id = 'payment_culqi.culqi_cuotealo_form'
+        
+        return inline_form_xml_id
+
+    def get_culqi_form_data(self, amount, currency, **kwargs):
         """Obtiene datos específicos para el formulario de pago"""
         self.ensure_one()
         

@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista de formulario de facturas con integración Culqi -->
+    <record id="account_move_form_view_culqi" model="ir.ui.view">
+        <field name="name">account.move.form.view.culqi</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Botones en el header -->
+            <header position="inside">
+                <field name="valid_for_culqi_refund" invisible="1"/>
+                
+                <!-- Botón para reembolso Culqi -->
+                <button string="Reembolso Culqi"
+                    name="action_register_refund_payment" 
+                    type="object"
+                    class="btn-warning"
+                    invisible="not valid_for_culqi_refund"
+                    help="Procesar reembolso a través de Culqi"/>
+                
+                <!-- Botón para pagar con Culqi -->
+                <button string="Pagar con Culqi"
+                    name="action_culqi_pay_invoice"
+                    type="object"
+                    class="btn-primary"
+                    invisible="state != 'posted' or payment_state != 'not_paid' or move_type not in ['out_invoice']"
+                    help="Generar link de pago con Culqi"/>
+            </header>
+            
+            <!-- Campos adicionales después del journal -->
+            <xpath expr="//div[@name='journal_div']" position="after">
+                <field name="culqi_refund_reference" invisible="1"/>
+                
+                <!-- Mostrar referencia de reembolso si existe -->
+                <div invisible="not culqi_refund_reference" class="alert alert-success" role="alert">
+                    <i class="fa fa-check-circle me-2"></i>
+                    <strong>Reembolso Culqi procesado:</strong>
+                    <field name="culqi_refund_reference" readonly="1" class="ms-2"/>
+                    <span class="badge bg-success ms-2">
+                        <i class="fa fa-money"></i> Monto reembolsado en Culqi
+                    </span>
+                </div>
+            </xpath>
+            
+            <!-- Información de transacciones Culqi en el notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Pagos Culqi" name="culqi_payments" 
+                      invisible="not transaction_ids or not any(tx.provider_code == 'culqi' for tx in transaction_ids)">
+                    
+                    <group string="Transacciones Culqi">
+                        <field name="transaction_ids" readonly="1" nolabel="1"
+                               domain="[('provider_code', '=', 'culqi')]">
+                            <list>
+                                <field name="reference"/>
+                                <field name="provider_reference"/>
+                                <field name="culqi_payment_method"/>
+                                <field name="amount" widget="monetary"/>
+                                <field name="currency_id" column_invisible="1"/>
+                                <field name="state" widget="badge" 
+                                       decoration-success="state == 'done'"
+                                       decoration-warning="state == 'pending'" 
+                                       decoration-danger="state in ['cancel', 'error']"/>
+                                <field name="culqi_creation_date"/>
+                                <button name="action_view_culqi_transaction" 
+                                        type="object" 
+                                        string="Ver en Culqi"
+                                        class="btn-link"
+                                        icon="fa-external-link"/>
+                            </list>
+                        </field>
+                    </group>
+                    
+                    <!-- Resumen de pagos Culqi -->
+                    <group string="Resumen de Pagos Culqi" col="4">
+                        <label string="Total pagado con Culqi:"/>
+                        <div>
+                            <field name="transaction_ids" invisible="1"/>
+                            <span class="fw-bold text-success">
+                                <!-- Este campo se puede calcular con un computed field -->
+                                <t t-esc="sum(tx.amount for tx in transaction_ids if tx.provider_code == 'culqi' and tx.state == 'done')"/>
+                                <t t-esc="currency_id.symbol"/>
+                            </span>
+                        </div>
+                        
+                        <label string="Comisiones Culqi:"/>
+                        <div>
+                            <span class="text-muted">
+                                <t t-esc="sum(tx.culqi_fee or 0 for tx in transaction_ids if tx.provider_code == 'culqi' and tx.state == 'done')"/>
+                                <t t-esc="currency_id.symbol"/>
+                            </span>
+                        </div>
+                    </group>
+                    
+                </page>
+            </xpath>
+            
+        </field>
+    </record>
+
+    <!-- Vista lista de facturas con información Culqi -->
+    <record id="account_move_tree_view_culqi" model="ir.ui.view">
+        <field name="name">account.move.tree.view.culqi</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_out_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_state']" position="after">
+                <!-- Indicador de pago Culqi -->
+                <field name="transaction_ids" invisible="1"/>
+                <field name="culqi_refund_reference" invisible="1"/>
+                
+                <!-- Columna con información de Culqi -->
+                <field name="payment_state" string="Culqi" widget="badge"
+                       invisible="not any(tx.provider_code == 'culqi' for tx in transaction_ids)"
+                       decoration-success="any(tx.provider_code == 'culqi' and tx.state == 'done' for tx in transaction_ids)"
+                       decoration-warning="any(tx.provider_code == 'culqi' and tx.state == 'pending' for tx in transaction_ids)"
+                       decoration-info="culqi_refund_reference"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Vista de búsqueda con filtros Culqi -->
+    <record id="account_move_search_view_culqi" model="ir.ui.view">
+        <field name="name">account.move.search.view.culqi</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='unpaid']" position="after">
+                
+                <!-- Filtros específicos de Culqi -->
+                <separator/>
+                <filter string="Pagadas con Culqi" name="paid_with_culqi"
+                        domain="[('transaction_ids.provider_code', '=', 'culqi'), ('transaction_ids.state', '=', 'done')]"/>
+                        
+                <filter string="Pendientes Culqi" name="pending_culqi"
+                        domain="[('transaction_ids.provider_code', '=', 'culqi'), ('transaction_ids.state', '=', 'pending')]"/>
+                        
+                <filter string="Con Reembolso Culqi" name="refunded_culqi"
+                        domain="[('culqi_refund_reference', '!=', False)]"/>
+                        
+                <filter string="Válidas para Reembolso Culqi" name="valid_for_culqi_refund"
+                        domain="[('valid_for_culqi_refund', '=', True)]"/>
+            </xpath>
+            
+            <!-- Agrupaciones por Culqi -->
+            <xpath expr="//group" position="inside">
+                <filter string="Método de Pago Culqi" name="group_by_culqi_method"
+                        context="{'group_by': 'transaction_ids.culqi_payment_method'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Acción para facturas con pagos Culqi -->
+    <record id="action_account_moves_culqi" model="ir.actions.act_window">
+        <field name="name">Facturas con Culqi</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('transaction_ids.provider_code', '=', 'culqi')]</field>
+        <field name="context">{
+            'default_move_type': 'out_invoice',
+            'search_default_paid_with_culqi': 1
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                ¡No hay facturas con pagos Culqi todavía!
+            </p>
+            <p>
+                Las facturas pagadas a través de Culqi aparecerán aquí.
+                Puedes generar links de pago desde cualquier factura pendiente.
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción para facturas pendientes de pago Culqi -->
+    <record id="action_account_moves_pending_culqi" model="ir.actions.act_window">
+        <field name="name">Facturas Pendientes para Culqi</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[
+            ('state', '=', 'posted'),
+            ('payment_state', '=', 'not_paid'),
+            ('move_type', '=', 'out_invoice')
+        ]</field>
+        <field name="context">{
+            'default_move_type': 'out_invoice'
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                ¡Todas las facturas están pagadas!
+            </p>
+            <p>
+                Aquí aparecerán las facturas pendientes de pago que pueden ser 
+                pagadas a través de Culqi.
+            </p>
+        </field>
+    </record>
+
+</odoo>
