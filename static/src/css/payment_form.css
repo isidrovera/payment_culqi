@@ -1,0 +1,473 @@
+/* payment_culqi/static/src/css/payment_form.css */
+
+/* =================================
+   ESTILOS GENERALES CULQI
+   ================================= */
+
+.culqi-payment-form {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+}
+
+.culqi-payment-form h5 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.amount-info {
+    text-align: center;
+    font-size: 1.5rem;
+    color: #27ae60;
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #27ae60;
+}
+
+/* =================================
+   FORMULARIO EMBEBIDO
+   ================================= */
+
+.culqi-embedded-container {
+    padding: 20px 0;
+}
+
+.culqi-card-form {
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.culqi-card-form .form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.culqi-card-form .form-control {
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    padding: 12px 15px;
+    font-size: 16px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.culqi-card-form .form-control:focus {
+    border-color: #00a19b;
+    box-shadow: 0 0 0 0.2rem rgba(0, 161, 155, 0.25);
+    outline: none;
+}
+
+.culqi-card-form .form-control::placeholder {
+    color: #adb5bd;
+    font-style: italic;
+}
+
+/* Icono de tarjeta en el input */
+#card-number {
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIgNkgyMlY4SDJWNlpNMiAxMEgyMlYxOEgyVjEwWk00IDEySDhWMTZINFYxMloiIGZpbGw9IiM2Yjc4ODQiLz4KPC9zdmc+');
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 20px;
+    padding-right: 45px;
+}
+
+/* =================================
+   MODO POPUP
+   ================================= */
+
+.culqi-popup-container {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+#culqi-popup-trigger {
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #00a19b 0%, #00d4aa 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    transition: all 0.3s ease;
+    min-width: 250px;
+}
+
+#culqi-popup-trigger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 161, 155, 0.4);
+    background: linear-gradient(135deg, #009691 0%, #00c49a 100%);
+}
+
+#culqi-popup-trigger:active {
+    transform: translateY(0);
+}
+
+/* =================================
+   MODO REDIRECT
+   ================================= */
+
+.culqi-redirect-container {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.culqi-redirect-container .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 4px;
+}
+
+/* =================================
+   MÉTODOS DE PAGO
+   ================================= */
+
+.payment-methods-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.payment-methods-info h6 {
+    color: #495057;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.payment-method-icon {
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.payment-method-icon:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.payment-method-icon i {
+    margin-bottom: 8px;
+}
+
+.payment-method-icon .small {
+    font-weight: 600;
+    color: #495057;
+}
+
+/* =================================
+   MENSAJES
+   ================================= */
+
+#culqi-messages {
+    margin-top: 20px;
+}
+
+#culqi-messages .alert {
+    border-radius: 6px;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    border: none;
+    font-weight: 500;
+}
+
+#culqi-success-message {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+#culqi-error-message {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+#culqi-info-message {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+    border-left: 4px solid #17a2b8;
+}
+
+/* =================================
+   ESTADO DE PAGO
+   ================================= */
+
+.payment-success i,
+.payment-pending i,
+.payment-error i {
+    margin-bottom: 20px;
+}
+
+.payment-details {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.payment-details dl {
+    margin-bottom: 0;
+}
+
+.payment-details dt {
+    font-weight: 600;
+    color: #495057;
+}
+
+.payment-details dd {
+    color: #6c757d;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+/* PagoEfectivo específico */
+.pagoefectivo-info {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.pagoefectivo-info h5 {
+    color: #856404;
+    margin-bottom: 15px;
+}
+
+.pagoefectivo-info p {
+    margin-bottom: 10px;
+    color: #856404;
+}
+
+.pagoefectivo-info strong {
+    font-family: 'Courier New', monospace;
+    background: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #ffeaa7;
+}
+
+/* =================================
+   INFORMACIÓN DE TRANSACCIÓN
+   ================================= */
+
+.culqi-transaction-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin: 20px 0;
+}
+
+.culqi-transaction-info h6 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-weight: 600;
+    border-bottom: 2px solid #00a19b;
+    padding-bottom: 8px;
+}
+
+.culqi-transaction-info dt {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.culqi-transaction-info dd {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+/* Estados con badges */
+.badge {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+/* =================================
+   PAGO RÁPIDO
+   ================================= */
+
+.culqi-quick-payment {
+    text-align: center;
+    padding: 20px;
+}
+
+.culqi-pay-button {
+    background: linear-gradient(135deg, #00a19b 0%, #00d4aa 100%);
+    border: none;
+    padding: 15px 25px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.culqi-pay-button:hover {
+    background: linear-gradient(135deg, #009691 0%, #00c49a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 161, 155, 0.4);
+}
+
+/* =================================
+   RESPONSIVE
+   ================================= */
+
+@media (max-width: 768px) {
+    .culqi-payment-form {
+        margin: 10px;
+        padding: 15px;
+    }
+    
+    .culqi-card-form {
+        padding: 20px 15px;
+    }
+    
+    .amount-info {
+        font-size: 1.2rem;
+        padding: 12px;
+    }
+    
+    #culqi-popup-trigger {
+        min-width: 100%;
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+    
+    .payment-method-icon {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .payment-details {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .culqi-payment-form {
+        margin: 5px;
+        padding: 10px;
+    }
+    
+    .payment-methods-info .col-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+    
+    .payment-method-icon i {
+        font-size: 1.5rem;
+    }
+    
+    .amount-info {
+        font-size: 1.1rem;
+    }
+}
+
+/* =================================
+   ANIMACIONES
+   ================================= */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.culqi-payment-form {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.culqi-pay-button:focus {
+    animation: pulse 0.5s ease-in-out;
+}
+
+/* =================================
+   CARGA
+   ================================= */
+
+.spinner-border {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #00a19b;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* =================================
+   UTILIDADES
+   ================================= */
+
+.text-culqi {
+    color: #00a19b !important;
+}
+
+.bg-culqi {
+    background-color: #00a19b !important;
+}
+
+.border-culqi {
+    border-color: #00a19b !important;
+}
+
+.btn-culqi {
+    background: linear-gradient(135deg, #00a19b 0%, #00d4aa 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+}
+
+.btn-culqi:hover {
+    background: linear-gradient(135deg, #009691 0%, #00c49a 100%);
+    color: white;
+}

@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Template principal para el formulario de pago Culqi -->
+    <template id="culqi_payment_form" name="Culqi Payment Form">
+        <div class="culqi-payment-form" t-att-data-checkout-mode="checkout_mode">
+            
+            <!-- Información del pago -->
+            <div class="payment-info mb-3">
+                <h5>Pagar con Culqi</h5>
+                <div class="amount-info">
+                    <strong t-esc="'%s %s' % (currency, amount_cents / 100)"/>
+                </div>
+            </div>
+            
+            <!-- Modo Embedded: Formulario integrado -->
+            <div t-if="checkout_mode == 'embedded'" class="culqi-embedded-container">
+                <div id="culqi-payment-container" class="payment-form-container">
+                    <!-- El formulario se renderizará aquí via JavaScript -->
+                    <div class="text-center p-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando formulario de pago...</span>
+                        </div>
+                        <p class="mt-2">Cargando opciones de pago...</p>
+                    </div>
+                </div>
+                
+                <!-- Campos ocultos para datos de transacción -->
+                <input type="hidden" id="culqi_reference" name="culqi_reference" t-att-value="reference"/>
+                <input type="hidden" id="culqi_return_url" name="culqi_return_url" t-att-value="return_url"/>
+                <input type="hidden" id="culqi_amount" name="culqi_amount" t-att-value="amount_cents"/>
+                <input type="hidden" id="culqi_currency" name="culqi_currency" t-att-value="currency"/>
+            </div>
+            
+            <!-- Modo Pop-up: Botón para abrir ventana emergente -->
+            <div t-if="checkout_mode == 'popup'" class="culqi-popup-container">
+                <div class="text-center p-4">
+                    <button type="button" id="culqi-popup-trigger" 
+                            class="btn btn-primary btn-lg">
+                        <i class="fa fa-credit-card me-2"></i>
+                        Pagar con Culqi
+                    </button>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Se abrirá una ventana segura para completar el pago
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modo Redirect: Formulario automático -->
+            <div t-if="checkout_mode == 'redirect'" class="culqi-redirect-container">
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Redirigiendo...</span>
+                    </div>
+                    <p>Redirigiendo al procesador de pagos Culqi...</p>
+                    <small class="text-muted">Si no es redirigido automáticamente, haga clic en continuar</small>
+                </div>
+            </div>
+            
+            <!-- Métodos de pago disponibles -->
+            <div class="payment-methods-info mt-4">
+                <h6>Métodos de pago disponibles:</h6>
+                <div class="row">
+                    <div class="col-6 col-md-3 text-center mb-2">
+                        <div class="payment-method-icon">
+                            <i class="fa fa-credit-card fa-2x text-primary"></i>
+                            <div class="small">Tarjetas</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 text-center mb-2">
+                        <div class="payment-method-icon">
+                            <i class="fa fa-mobile fa-2x text-success"></i>
+                            <div class="small">Yape</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 text-center mb-2">
+                        <div class="payment-method-icon">
+                            <i class="fa fa-money fa-2x text-warning"></i>
+                            <div class="small">PagoEfectivo</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 text-center mb-2">
+                        <div class="payment-method-icon">
+                            <i class="fa fa-calendar fa-2x text-info"></i>
+                            <div class="small">Cuotéalo</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mensajes de estado -->
+            <div id="culqi-messages" class="mt-3" style="display: none;">
+                <div id="culqi-success-message" class="alert alert-success" style="display: none;">
+                    <i class="fa fa-check-circle me-2"></i>
+                    <span class="message-text"></span>
+                </div>
+                <div id="culqi-error-message" class="alert alert-danger" style="display: none;">
+                    <i class="fa fa-exclamation-circle me-2"></i>
+                    <span class="message-text"></span>
+                </div>
+                <div id="culqi-info-message" class="alert alert-info" style="display: none;">
+                    <i class="fa fa-info-circle me-2"></i>
+                    <span class="message-text"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scripts de Culqi -->
+        <script t-if="checkout_mode in ['embedded', 'popup']" type="text/javascript">
+            // Configuración global de Culqi
+            window.culqiConfig = {
+                publicKey: '<t t-esc="public_key"/>',
+                checkoutMode: '<t t-esc="checkout_mode"/>',
+                returnUrl: '<t t-esc="return_url"/>',
+                reference: '<t t-esc="reference"/>',
+                amount: <t t-esc="amount_cents"/>,
+                currency: '<t t-esc="currency"/>',
+                customerEmail: '<t t-esc="customer_email"/>',
+                description: '<t t-esc="description"/>',
+            };
+        </script>
+        
+        <!-- Script del SDK de Culqi -->
+        <script t-if="checkout_mode in ['embedded', 'popup']" 
+                type="text/javascript"
+                src="https://checkout.culqi.com/js/v4"
+                t-att-data-key="public_key">
+        </script>
+        
+        <!-- Estilos CSS del formulario -->
+        <link t-if="checkout_mode in ['embedded', 'popup']" 
+              rel="stylesheet" 
+              href="https://checkout.culqi.com/css/v4"/>
+        
+    </template>
+    
+    <!-- Template para mostrar estado del pago -->
+    <template id="payment_status" name="Culqi Payment Status">
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>Estado del Pago</h4>
+                        </div>
+                        <div class="card-body text-center">
+                            
+                            <!-- Estado exitoso -->
+                            <div t-if="tx.state == 'done'" class="payment-success">
+                                <i class="fa fa-check-circle fa-5x text-success mb-3"></i>
+                                <h3 class="text-success">¡Pago Exitoso!</h3>
+                                <p>Su transacción ha sido procesada correctamente.</p>
+                                
+                                <div class="payment-details mt-4">
+                                    <dl class="row">
+                                        <dt class="col-sm-6">Referencia:</dt>
+                                        <dd class="col-sm-6" t-esc="tx.reference"/>
+                                        
+                                        <dt class="col-sm-6">Monto:</dt>
+                                        <dd class="col-sm-6" t-esc="'%s %s' % (tx.currency_id.symbol, tx.amount)"/>
+                                        
+                                        <dt class="col-sm-6">Método:</dt>
+                                        <dd class="col-sm-6" t-esc="payment_method_info"/>
+                                        
+                                        <dt class="col-sm-6" t-if="tx.culqi_charge_id">ID Culqi:</dt>
+                                        <dd class="col-sm-6" t-if="tx.culqi_charge_id" t-esc="tx.culqi_charge_id"/>
+                                    </dl>
+                                </div>
+                            </div>
+                            
+                            <!-- Estado pendiente -->
+                            <div t-if="tx.state == 'pending'" class="payment-pending">
+                                <i class="fa fa-clock-o fa-5x text-warning mb-3"></i>
+                                <h3 class="text-warning">Pago Pendiente</h3>
+                                <p>Su pago está siendo procesado.</p>
+                                
+                                <!-- Información específica para PagoEfectivo -->
+                                <div t-if="tx.culqi_payment_method == 'pagoefectivo'" class="pagoefectivo-info mt-4">
+                                    <div class="alert alert-info">
+                                        <h5>Instrucciones para PagoEfectivo</h5>
+                                        <p><strong>Código CIP:</strong> <span t-esc="tx.culqi_pagoefectivo_cip"/></p>
+                                        <p><strong>Válido hasta:</strong> <span t-esc="tx.culqi_pagoefectivo_expiration"/></p>
+                                        <p>Acérquese a cualquier agente PagoEfectivo con este código para completar su pago.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Estado cancelado/error -->
+                            <div t-if="tx.state in ['cancel', 'error']" class="payment-error">
+                                <i class="fa fa-times-circle fa-5x text-danger mb-3"></i>
+                                <h3 class="text-danger">Pago No Completado</h3>
+                                <p t-if="tx.state_message" t-esc="tx.state_message"/>
+                                <p t-else="">Su pago no pudo ser procesado. Puede intentar nuevamente.</p>
+                                
+                                <button class="btn btn-primary mt-3" onclick="history.back()">
+                                    Intentar Nuevamente
+                                </button>
+                            </div>
+                            
+                        </div>
+                        <div class="card-footer text-center">
+                            <small class="text-muted">
+                                Procesado por <strong>Culqi</strong> - Pagos seguros
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <!-- Template para información de transacción en factura -->
+    <template id="payment_transaction_info" name="Culqi Transaction Info">
+        <div class="culqi-transaction-info">
+            <h6>Información de Pago Culqi</h6>
+            <dl class="row">
+                <dt class="col-sm-4">Método:</dt>
+                <dd class="col-sm-8" t-esc="transaction._get_culqi_payment_method_info()"/>
+                
+                <dt class="col-sm-4" t-if="transaction.culqi_charge_id">ID Transacción:</dt>
+                <dd class="col-sm-8" t-if="transaction.culqi_charge_id" t-esc="transaction.culqi_charge_id"/>
+                
+                <dt class="col-sm-4" t-if="transaction.culqi_creation_date">Fecha Culqi:</dt>
+                <dd class="col-sm-8" t-if="transaction.culqi_creation_date" t-esc="transaction.culqi_creation_date"/>
+                
+                <dt class="col-sm-4">Estado:</dt>
+                <dd class="col-sm-8">
+                    <span t-att-class="'badge ' + ('bg-success' if transaction.state == 'done' else 'bg-warning' if transaction.state == 'pending' else 'bg-danger')"
+                          t-esc="dict(transaction._fields['state'].selection).get(transaction.state, transaction.state)"/>
+                </dd>
+            </dl>
+        </div>
+    </template>
+    
+    <!-- Template para botón de pago rápido -->
+    <template id="quick_payment_button" name="Culqi Quick Payment">
+        <div class="culqi-quick-payment">
+            <button type="button" class="btn btn-primary btn-block culqi-pay-button"
+                    t-att-data-amount="amount"
+                    t-att-data-currency="currency"
+                    t-att-data-description="description">
+                <i class="fa fa-credit-card me-2"></i>
+                Pagar con Culqi
+            </button>
+        </div>
+    </template>
+
+</odoo>

@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_payment_provider_culqi_user,payment.provider.culqi.user,payment.model_payment_provider,base.group_user,1,0,0,0
+access_payment_provider_culqi_manager,payment.provider.culqi.manager,payment.model_payment_provider,account.group_account_manager,1,1,1,0
+access_payment_provider_culqi_admin,payment.provider.culqi.admin,payment.model_payment_provider,base.group_system,1,1,1,1
+access_payment_transaction_culqi_user,payment.transaction.culqi.user,payment.model_payment_transaction,base.group_user,1,0,0,0
+access_payment_transaction_culqi_manager,payment.transaction.culqi.manager,payment.model_payment_transaction,account.group_account_manager,1,1,1,0
+access_payment_transaction_culqi_admin,payment.transaction.culqi.admin,payment.model_payment_transaction,base.group_system,1,1,1,1
+access_payment_method_culqi_user,payment.method.culqi.user,payment.model_payment_method,base.group_user,1,0,0,0
+access_payment_method_culqi_manager,payment.method.culqi.manager,payment.model_payment_method,account.group_account_manager,1,1,1,0
+access_payment_method_culqi_admin,payment.method.culqi.admin,payment.model_payment_method,base.group_system,1,1,1,1
+access_payment_token_culqi_user,payment.token.culqi.user,payment.model_payment_token,base.group_user,1,0,0,0
+access_payment_token_culqi_manager,payment.token.culqi.manager,payment.model_payment_token,account.group_account_manager,1,1,1,0
+access_payment_token_culqi_admin,payment.token.culqi.admin,payment.model_payment_token,base.group_system,1,1,1,1

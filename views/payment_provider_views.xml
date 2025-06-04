@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Vista de formulario para configuración de Culqi -->
+    <record id="payment_provider_form_culqi" model="ir.ui.view">
+        <field name="name">payment.provider.form.culqi</field>
+        <field name="model">payment.provider</field>
+        <field name="inherit_id" ref="payment.payment_provider_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='provider_details']" position="after">
+                <group string="Configuración Culqi" invisible="code != 'culqi'">
+                    
+                    <!-- Credenciales principales -->
+                    <group name="culqi_credentials" string="Credenciales de API">
+                        <field name="culqi_public_key" password="True" 
+                               placeholder="pk_test_... o pk_live_..."
+                               required="code == 'culqi'"/>
+                        <field name="culqi_secret_key" password="True"
+                               placeholder="sk_test_... o sk_live_..."
+                               required="code == 'culqi'"/>
+                        <button name="action_test_culqi_connection" 
+                                string="Probar Conexión" 
+                                type="object" 
+                                class="btn-secondary"
+                                invisible="not culqi_public_key or not culqi_secret_key"/>
+                    </group>
+                    
+                    <!-- Configuración de checkout -->
+                    <group name="culqi_checkout" string="Configuración de Checkout">
+                        <field name="culqi_checkout_mode" widget="radio"/>
+                        <field name="culqi_webhook_url" readonly="1" 
+                               help="URL para configurar en el panel de Culqi"/>
+                    </group>
+                    
+                    <!-- Métodos de pago habilitados -->
+                    <group name="culqi_methods" string="Métodos de Pago Habilitados">
+                        <field name="culqi_enable_cards"/>
+                        <field name="culqi_enable_yape"/>
+                        <field name="culqi_enable_pagoefectivo"/>
+                        <field name="culqi_enable_cuotealo"/>
+                    </group>
+                    
+                    <!-- Configuración RSA (opcional) -->
+                    <group name="culqi_rsa" string="Encriptación RSA (Opcional)" 
+                           col="1">
+                        <field name="culqi_rsa_id" placeholder="ID de llave RSA"/>
+                        <field name="culqi_rsa_public_key" 
+                               placeholder="-----BEGIN RSA PUBLIC KEY-----"/>
+                    </group>
+                    
+                </group>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Vista lista mejorada para proveedores -->
+    <record id="payment_provider_list_culqi" model="ir.ui.view">
+        <field name="name">payment.provider.list.culqi</field>
+        <field name="model">payment.provider</field>
+        <field name="inherit_id" ref="payment.payment_provider_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="culqi_checkout_mode" 
+                       invisible="code != 'culqi'"
+                       string="Modo"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Vista de formulario para transacciones Culqi -->
+    <record id="payment_transaction_form_culqi" model="ir.ui.view">
+        <field name="name">payment.transaction.form.culqi</field>
+        <field name="model">payment.transaction</field>
+        <field name="inherit_id" ref="payment.payment_transaction_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='provider_details']" position="after">
+                <group string="Información de Culqi" invisible="provider_code != 'culqi'">
+                    
+                    <!-- Información básica -->
+                    <group name="culqi_basic" string="Datos de Transacción">
+                        <field name="culqi_token_id" readonly="1"/>
+                        <field name="culqi_charge_id" readonly="1"/>
+                        <field name="culqi_payment_method" readonly="1"/>
+                        <field name="culqi_creation_date" readonly="1"/>
+                    </group>
+                    
+                    <!-- Información de tarjeta -->
+                    <group name="culqi_card" string="Información de Tarjeta"
+                           invisible="culqi_payment_method != 'card'">
+                        <field name="culqi_card_brand" readonly="1"/>
+                        <field name="culqi_card_last_four" readonly="1"/>
+                    </group>
+                    
+                    <!-- Información de PagoEfectivo -->
+                    <group name="culqi_pagoefectivo" string="PagoEfectivo"
+                           invisible="culqi_payment_method != 'pagoefectivo'">
+                        <field name="culqi_pagoefectivo_cip" readonly="1"/>
+                        <field name="culqi_pagoefectivo_expiration" readonly="1"/>
+                    </group>
+                    
+                    <!-- Información financiera -->
+                    <group name="culqi_financial" string="Información Financiera">
+                        <field name="culqi_fee" readonly="1"/>
+                        <field name="culqi_net_amount" readonly="1"/>
+                        <field name="culqi_outcome_type" readonly="1"/>
+                        <field name="culqi_outcome_code" readonly="1"/>
+                    </group>
+                    
+                    <!-- Acciones -->
+                    <group name="culqi_actions" string="Acciones">
+                        <button name="action_view_culqi_transaction" 
+                                string="Ver en Panel Culqi" 
+                                type="object" 
+                                class="btn-primary"
+                                invisible="not culqi_charge_id"
+                                icon="fa-external-link"/>
+                    </group>
+                    
+                </group>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Vista lista para transacciones con información Culqi -->
+    <record id="payment_transaction_list_culqi" model="ir.ui.view">
+        <field name="name">payment.transaction.list.culqi</field>
+        <field name="model">payment.transaction</field>
+        <field name="inherit_id" ref="payment.payment_transaction_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='provider_id']" position="after">
+                <field name="culqi_payment_method" 
+                       invisible="provider_code != 'culqi'"
+                       string="Método Culqi"/>
+                <field name="culqi_charge_id" 
+                       invisible="provider_code != 'culqi'"
+                       string="Charge ID"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Vista de formulario para métodos de pago Culqi -->
+    <record id="payment_method_form_culqi" model="ir.ui.view">
+        <field name="name">payment.method.form.culqi</field>
+        <field name="model">payment.method</field>
+        <field name="inherit_id" ref="payment.payment_method_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Configuración Culqi" invisible="not culqi_payment_type">
+                    
+                    <!-- Configuración básica -->
+                    <group name="culqi_basic" string="Configuración Básica">
+                        <field name="culqi_payment_type" readonly="1"/>
+                        <field name="culqi_card_brands" 
+                               invisible="culqi_payment_type != 'card'"/>
+                        <field name="culqi_processing_time"/>
+                    </group>
+                    
+                    <!-- Límites de monto -->
+                    <group name="culqi_limits" string="Límites de Monto">
+                        <field name="culqi_min_amount"/>
+                        <field name="culqi_max_amount"/>
+                        <field name="culqi_enabled_currencies" widget="many2many_tags"/>
+                    </group>
+                    
+                    <!-- Descripción -->
+                    <group name="culqi_description" string="Información para el Cliente" col="1">
+                        <field name="culqi_description"/>
+                        <field name="culqi_instructions" widget="html"/>
+                    </group>
+                    
+                    <!-- Acciones -->
+                    <group name="culqi_method_actions" string="Validación">
+                        <button name="action_test_culqi_method" 
+                                string="Validar Configuración" 
+                                type="object" 
+                                class="btn-secondary"
+                                icon="fa-check"/>
+                    </group>
+                    
+                </group>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Menú para configuración Culqi -->
+    <record id="menu_culqi_configuration" model="ir.ui.menu">
+        <field name="name">Configuración Culqi</field>
+        <field name="parent_id" ref="payment.menu_payment_configuration"/>
+        <field name="sequence">50</field>
+    </record>
+    
+    <!-- Acción para proveedores Culqi -->
+    <record id="action_payment_provider_culqi" model="ir.actions.act_window">
+        <field name="name">Proveedores Culqi</field>
+        <field name="res_model">payment.provider</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('code', '=', 'culqi')]</field>
+        <field name="context">{'default_code': 'culqi'}</field>
+    </record>
+    
+    <!-- Item de menú para proveedores Culqi -->
+    <record id="menu_payment_provider_culqi" model="ir.ui.menu">
+        <field name="name">Proveedores Culqi</field>
+        <field name="parent_id" ref="menu_culqi_configuration"/>
+        <field name="action" ref="action_payment_provider_culqi"/>
+        <field name="sequence">10</field>
+    </record>
+    
+    <!-- Acción para transacciones Culqi -->
+    <record id="action_payment_transaction_culqi" model="ir.actions.act_window">
+        <field name="name">Transacciones Culqi</field>
+        <field name="res_model">payment.transaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('provider_code', '=', 'culqi')]</field>
+    </record>
+    
+    <!-- Item de menú para transacciones Culqi -->
+    <record id="menu_payment_transaction_culqi" model="ir.ui.menu">
+        <field name="name">Transacciones Culqi</field>
+        <field name="parent_id" ref="menu_culqi_configuration"/>
+        <field name="action" ref="action_payment_transaction_culqi"/>
+        <field name="sequence">20</field>
+    </record>
+
+</odoo>
