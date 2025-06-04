@@ -68,18 +68,7 @@
         </field>
     </record>
 
-    <!-- Vista de lista para transacciones Culqi -->
-    <record id="payment_transaction_tree_culqi" model="ir.ui.view">
-        <field name="name">payment.transaction.tree.culqi</field>
-        <field name="model">payment.transaction</field>
-        <field name="inherit_id" ref="payment.payment_transaction_tree"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='provider_id']" position="after">
-                <field name="culqi_payment_method" invisible="provider_code != 'culqi'" optional="hide"/>
-                <field name="culqi_charge_id" invisible="provider_code != 'culqi'" optional="hide"/>
-            </xpath>
-        </field>
-    </record>
+
 
     <!-- Búsquedas para Culqi -->
     <record id="payment_transaction_search_culqi" model="ir.ui.view">
