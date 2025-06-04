@@ -58,6 +58,9 @@ class PaymentMethod(models.Model):
     
     culqi_enabled_currencies = fields.Many2many(
         'res.currency',
+        'payment_method_culqi_currency_rel',  # Tabla de relación específica
+        'method_id',  # Columna para payment.method
+        'currency_id',  # Columna para res.currency
         string="Monedas Soportadas",
         help="Monedas que soporta este método de pago"
     )
