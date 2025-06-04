@@ -2,7 +2,7 @@
 <odoo>
     <!-- data/payment_provider_data.xml -->
     
-    <!-- Proveedor de Pago Culqi - Formato compatible con Odoo 18 -->
+    <!-- Proveedor de Pago Culqi - Compatible con Odoo 18 -->
     <record id="payment_provider_culqi" model="payment.provider">
         <field name="name">Culqi</field>
         <field name="code">culqi</field>
@@ -11,7 +11,8 @@
         <field name="is_published">false</field>
         <field name="company_id" ref="base.main_company"/>
         <field name="support_tokenization">false</field>
-        <field name="support_manual_capture">false</field>
+        <!-- CAMPO CORREGIDO: usar 'none' en lugar de 'false' -->
+        <field name="support_manual_capture">none</field>
         <field name="support_refund">partial</field>
         <field name="support_express_checkout">false</field>
         <!-- Campos específicos de Culqi -->

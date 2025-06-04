@@ -261,3 +261,15 @@ class PaymentProvider(models.Model):
                 providers = providers.filtered(lambda p: p.code != 'culqi')
         
         return providers
+        
+    @api.depends('code')
+    def _compute_feature_support_fields(self):
+        """Compute the feature support fields based on the provider."""
+        super()._compute_feature_support_fields()
+        if self.code == 'culqi':
+            self.update({
+                'support_manual_capture': 'none',  # Culqi no soporta captura manual
+                'support_refund': 'partial',        # Culqi soporta reembolsos parciales
+                'support_tokenization': False,      # Por ahora sin tokenización
+                'support_express_checkout': False,  # Sin express checkout
+            })
