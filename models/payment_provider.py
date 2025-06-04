@@ -224,10 +224,10 @@ class PaymentProvider(models.Model):
 
     def _get_supported_currencies(self):
         """Retorna las monedas soportadas por Culqi"""
-        culqi_currencies = super()._get_supported_currencies()
         if self.code == 'culqi':
-            culqi_currencies = ['PEN', 'USD']  # Culqi soporta principalmente PEN y USD
-        return culqi_currencies
+            return self.env['res.currency'].search([('name', 'in', ['PEN', 'USD'])])
+        return super()._get_supported_currencies()
+
 
     def _get_validation_amount(self):
         """Monto mínimo para validación"""
