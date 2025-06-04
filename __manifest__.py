@@ -119,7 +119,7 @@ robusta, segura y completamente integrada con Odoo.
         # Vistas principales
         'views/payment_provider_views.xml',
         'views/payment_transaction_views.xml',
-        'views/payment_method_views.xml',
+        
 
         # Vistas contables
         'views/account_move_views.xml',
