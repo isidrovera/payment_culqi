@@ -2,31 +2,24 @@
 <odoo>
     <!-- data/payment_provider_data.xml -->
     
-    <!-- Proveedor de Pago Culqi - Compatible con Odoo 18 -->
+    <!-- Proveedor de Pago Culqi - Formato compatible con Odoo 18 -->
     <record id="payment_provider_culqi" model="payment.provider">
         <field name="name">Culqi</field>
         <field name="code">culqi</field>
         <field name="sequence">10</field>
         <field name="state">disabled</field>
-        
-        <!-- Campos booleanos con eval para Odoo 18 -->
-        <field name="is_published" eval="False"/>
-        <field name="support_tokenization" eval="False"/>
-        <field name="support_manual_capture" eval="False"/>
-        <field name="support_express_checkout" eval="False"/>
-        
-        <!-- Campo de empresa -->
+        <field name="is_published">false</field>
         <field name="company_id" ref="base.main_company"/>
-        
-        <!-- Campo con valor string válido -->
+        <field name="support_tokenization">false</field>
+        <field name="support_manual_capture">false</field>
         <field name="support_refund">partial</field>
-        
-        <!-- Campos específicos de Culqi con eval -->
+        <field name="support_express_checkout">false</field>
+        <!-- Campos específicos de Culqi -->
         <field name="culqi_checkout_mode">embedded</field>
-        <field name="culqi_enable_cards" eval="True"/>
-        <field name="culqi_enable_yape" eval="True"/>
-        <field name="culqi_enable_pagoefectivo" eval="True"/>
-        <field name="culqi_enable_cuotealo" eval="False"/>
+        <field name="culqi_enable_cards">true</field>
+        <field name="culqi_enable_yape">true</field>
+        <field name="culqi_enable_pagoefectivo">true</field>
+        <field name="culqi_enable_cuotealo">false</field>
     </record>
 
 </odoo>
