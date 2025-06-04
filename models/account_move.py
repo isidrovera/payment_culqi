@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, _
+from odoo import models, fields, _, api
 from odoo.exceptions import UserError
 
 
@@ -142,3 +142,26 @@ class AccountMove(models.Model):
             'url': payment_url,
             'target': 'self',
         }
+    
+    show_button_culqi = fields.Boolean(compute="_compute_show_button_culqi")
+    show_transaction_culqi_tab = fields.Boolean(compute="_compute_show_button_culqi")
+    has_culqi_done = fields.Boolean(compute="_compute_show_button_culqi")
+    has_culqi_pending = fields.Boolean(compute="_compute_show_button_culqi")
+    culqi_total_paid = fields.Monetary(compute="_compute_culqi_summary", currency_field="currency_id")
+    culqi_total_fee = fields.Monetary(compute="_compute_culqi_summary", currency_field="currency_id")
+
+    @api.depends('transaction_ids')
+    def _compute_show_button_culqi(self):
+        for move in self:
+            txs = move.transaction_ids.filtered(lambda t: t.provider_code == 'culqi')
+            move.show_button_culqi = bool(txs)
+            move.show_transaction_culqi_tab = bool(txs)
+            move.has_culqi_done = any(t.state == 'done' for t in txs)
+            move.has_culqi_pending = any(t.state == 'pending' for t in txs)
+
+    @api.depends('transaction_ids')
+    def _compute_culqi_summary(self):
+        for move in self:
+            txs = move.transaction_ids.filtered(lambda t: t.provider_code == 'culqi' and t.state == 'done')
+            move.culqi_total_paid = sum(t.amount for t in txs)
+            move.culqi_total_fee = sum(t.culqi_fee or 0.0 for t in txs)
