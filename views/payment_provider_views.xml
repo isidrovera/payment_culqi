@@ -7,53 +7,48 @@
         <field name="model">payment.provider</field>
         <field name="inherit_id" ref="payment.payment_provider_form"/>
         <field name="arch" type="xml">
-
-            <!-- Insertamos después del bloque de credenciales base -->
-            <xpath expr="//group[@name='provider_credentials']" position="after">
-
-                <!-- Grupo principal visible solo para Culqi -->
-                <group string="Configuración Culqi" name="culqi_section"
-                       invisible="code != 'culqi'">
-
-                    <!-- Grupo 1: Credenciales de API -->
-                    <group name="culqi_credentials" string="Credenciales de API" col="2">
-                        <field name="culqi_public_key"
-                               password="True"
+            <xpath expr="//field[@name='code']" position="after">
+            <xpath expr="//field[@name='code']" position="after">
+                <group string="Configuración Culqi" invisible="code != 'culqi'">
+                    
+                    <!-- Credenciales principales -->
+                    <group name="culqi_credentials" string="Credenciales de API">
+                        <field name="culqi_public_key" password="True" 
                                placeholder="pk_test_... o pk_live_..."
                                required="code == 'culqi'"/>
-                        <field name="culqi_secret_key"
-                               password="True"
+                        <field name="culqi_secret_key" password="True"
                                placeholder="sk_test_... o sk_live_..."
                                required="code == 'culqi'"/>
-                        <button name="action_test_culqi_connection"
-                                string="Probar Conexión"
-                                type="object"
+                        <button name="action_test_culqi_connection" 
+                                string="Probar Conexión" 
+                                type="object" 
                                 class="btn-secondary"
-                                icon="fa-check"
-                                attrs="{'invisible': ['|', ('culqi_public_key','=',False), ('culqi_secret_key','=',False)]}"/>
+                                invisible="not culqi_public_key or not culqi_secret_key"/>
                     </group>
-
-                    <!-- Grupo 2: Configuración de Checkout -->
-                    <group name="culqi_checkout" string="Configuración de Checkout" col="2">
+                    
+                    <!-- Configuración de checkout -->
+                    <group name="culqi_checkout" string="Configuración de Checkout">
                         <field name="culqi_checkout_mode" widget="radio"/>
-                        <field name="culqi_webhook_url" readonly="1"
+                        <field name="culqi_webhook_url" readonly="1" 
                                help="URL para configurar en el panel de Culqi"/>
                     </group>
-
-                    <!-- Grupo 3: Métodos de pago -->
-                    <group name="culqi_methods" string="Métodos de Pago Habilitados" col="2">
+                    
+                    <!-- Métodos de pago habilitados -->
+                    <group name="culqi_methods" string="Métodos de Pago Habilitados">
                         <field name="culqi_enable_cards"/>
                         <field name="culqi_enable_yape"/>
                         <field name="culqi_enable_pagoefectivo"/>
                         <field name="culqi_enable_cuotealo"/>
                     </group>
-
-                    <!-- Grupo 4: Encriptación opcional -->
-                    <group name="culqi_rsa" string="Encriptación RSA (opcional)" col="2">
-                        <field name="culqi_rsa_id"/>
-                        <field name="culqi_rsa_public_key"/>
+                    
+                    <!-- Configuración RSA (opcional) -->
+                    <group name="culqi_rsa" string="Encriptación RSA (Opcional)" 
+                           col="1">
+                        <field name="culqi_rsa_id" placeholder="ID de llave RSA"/>
+                        <field name="culqi_rsa_public_key" 
+                               placeholder="-----BEGIN RSA PUBLIC KEY-----"/>
                     </group>
-
+                    
                 </group>
             </xpath>
         </field>
@@ -79,7 +74,7 @@
         <field name="model">payment.transaction</field>
         <field name="inherit_id" ref="payment.payment_transaction_form"/>
         <field name="arch" type="xml">
-            
+            <xpath expr="//field[@name='provider_id']" position="after">
             <xpath expr="//field[@name='provider_id']" position="after">
                 <group string="Información de Culqi" invisible="provider_code != 'culqi'">
                     
@@ -191,11 +186,10 @@
     
     <!-- Menú para configuración Culqi -->
     <record id="menu_culqi_configuration" model="ir.ui.menu">
-        <field name="name">Culqi</field>
-        <field name="parent_id" ref="account.menu_finance_configuration"/>
+        <field name="name">Configuración Culqi</field>
+        <field name="parent_id" ref="payment.menu_payment_configuration"/>
         <field name="sequence">50</field>
     </record>
-
     
     <!-- Acción para proveedores Culqi -->
     <record id="action_payment_provider_culqi" model="ir.actions.act_window">
