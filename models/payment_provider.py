@@ -136,11 +136,6 @@ class PaymentProvider(models.Model):
     def _culqi_make_request(self, endpoint, data=None, method='POST'):
         """
         Realiza una petición HTTP a la API de Culqi
-        
-        :param endpoint: Endpoint de la API (ej: '/charges')
-        :param data: Datos a enviar en formato dict
-        :param method: Método HTTP (GET, POST, etc.)
-        :return: Respuesta de la API
         """
         self.ensure_one()
         
@@ -171,13 +166,20 @@ class PaymentProvider(models.Model):
             )
             
             _logger.info("Culqi API Response: %s", response.status_code)
+            _logger.debug("Culqi API Response Body: %s", response.text)  # Agregar esto para debug
             
             if response.status_code >= 400:
                 error_data = response.json() if response.content else {}
                 _logger.error("Culqi API Error: %s", error_data)
-                raise UserError(_(
-                    "Error en la API de Culqi: %s"
-                ) % error_data.get('message', 'Error desconocido'))
+                
+                # Mejorar el mensaje de error
+                if response.status_code == 401:
+                    raise UserError(_("Credenciales inválidas. Verifica tu Secret Key de Culqi."))
+                elif response.status_code == 400:
+                    error_msg = error_data.get('message', 'Petición inválida')
+                    raise UserError(_("Error en petición a Culqi: %s") % error_msg)
+                else:
+                    raise UserError(_("Error en la API de Culqi: %s") % error_data.get('message', 'Error desconocido'))
             
             return response.json()
             
@@ -190,11 +192,11 @@ class PaymentProvider(models.Model):
         self.ensure_one()
         
         try:
-            # Intentar hacer una petición simple para validar credenciales
-            result = self._culqi_make_request('/plans', method='GET')
+            # Intentar listar charges existentes (endpoint más confiable)
+            result = self._culqi_make_request('/charges', method='GET')
             return {
                 'success': True,
-                'message': _("Credenciales válidas")
+                'message': _("Credenciales válidas - Conexión exitosa con Culqi")
             }
         except Exception as e:
             return {
