@@ -7,33 +7,31 @@
         <field name="model">payment.transaction</field>
         <field name="inherit_id" ref="payment.payment_transaction_form"/>
         <field name="arch" type="xml">
-            
+
             <!-- Campos específicos de Culqi -->
             <xpath expr="//field[@name='provider_reference']" position="after">
-                <field name="culqi_charge_id" readonly="1" 
-                       invisible="provider_code != 'culqi' or not culqi_charge_id"/>
+                <field name="culqi_charge_id" readonly="1"
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi')]}"/>
                 <field name="culqi_token_id" readonly="1"
-                       invisible="provider_code != 'culqi' or not culqi_token_id"/>
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi')]}"/>
             </xpath>
 
             <!-- Información del método de pago Culqi -->
             <xpath expr="//field[@name='payment_method_id']" position="after">
                 <field name="culqi_payment_method" readonly="1"
-                       invisible="provider_code != 'culqi'"/>
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi')]}"/>
                 <field name="culqi_card_brand" readonly="1"
-                       invisible="provider_code != 'culqi' or culqi_payment_method != 'card'"/>
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi'), ('culqi_payment_method', '!=', 'card')]}"/>
                 <field name="culqi_card_last_four" readonly="1"
-                       invisible="provider_code != 'culqi' or culqi_payment_method != 'card'"/>
-            </xpath>
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi'), ('culqi_payment_method', '!=', 'card')]}"/>
 
-            <!-- Información adicional en el notebook -->
-            <xpath expr="//notebook" position="inside">
-                <page string="Información Culqi" name="culqi_info"
-                      invisible="provider_code != 'culqi'">
-                    
+                <!-- Bloque de información Culqi en grupo -->
+                <group string="Información Culqi"
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi')]}">
+
                     <!-- Información de PagoEfectivo -->
                     <group string="Información PagoEfectivo"
-                           invisible="culqi_payment_method != 'pagoefectivo'">
+                           attrs="{'invisible': [('culqi_payment_method', '!=', 'pagoefectivo')]}">
                         <field name="culqi_pagoefectivo_cip" readonly="1"/>
                         <field name="culqi_pagoefectivo_expiration" readonly="1"/>
                     </group>
@@ -43,7 +41,7 @@
                         <field name="culqi_fee" readonly="1"/>
                         <field name="culqi_net_amount" readonly="1"/>
                         <field name="culqi_installments" readonly="1"
-                               invisible="culqi_payment_method != 'cuotealo'"/>
+                               attrs="{'invisible': [('culqi_payment_method', '!=', 'cuotealo')]}"/>
                     </group>
 
                     <!-- Información técnica Culqi -->
@@ -54,17 +52,16 @@
                         <field name="culqi_email" readonly="1"/>
                         <field name="culqi_device_fingerprint" readonly="1"/>
                     </group>
-                    
-                </page>
+                </group>
             </xpath>
 
             <!-- Botón para ver en Culqi -->
             <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_view_culqi_transaction" 
-                        type="object" 
+                <button name="action_view_culqi_transaction"
+                        type="object"
                         class="oe_stat_button"
                         icon="fa-external-link"
-                        invisible="provider_code != 'culqi' or not culqi_charge_id">
+                        attrs="{'invisible': [('provider_code', '!=', 'culqi'), ('culqi_charge_id', '=', False)]}">
                     <div class="o_field_widget o_stat_info">
                         <span class="o_stat_text">Ver en Culqi</span>
                     </div>
@@ -73,8 +70,8 @@
 
             <!-- Pago de recordatorio -->
             <xpath expr="//field[@name='payment_id']" position="after">
-                <field name="culqi_reminder_payment_id" readonly="1" 
-                       invisible="provider_code != 'culqi' or not culqi_reminder_payment_id"/>
+                <field name="culqi_reminder_payment_id" readonly="1"
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi'), ('culqi_reminder_payment_id', '=', False)]}"/>
             </xpath>
 
         </field>
@@ -87,11 +84,11 @@
         <field name="inherit_id" ref="payment.payment_transaction_tree"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='provider_id']" position="after">
-                <field name="culqi_payment_method" 
-                       invisible="provider_code != 'culqi'"
+                <field name="culqi_payment_method"
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi')]}"
                        optional="hide"/>
-                <field name="culqi_charge_id" 
-                       invisible="provider_code != 'culqi'"
+                <field name="culqi_charge_id"
+                       attrs="{'invisible': [('provider_code', '!=', 'culqi')]}"
                        optional="hide"/>
             </xpath>
         </field>
@@ -114,7 +111,7 @@
                 <filter string="PagoEfectivo" name="culqi_pagoefectivo"
                         domain="[('provider_code', '=', 'culqi'), ('culqi_payment_method', '=', 'pagoefectivo')]"/>
             </xpath>
-            
+
             <xpath expr="//group" position="inside">
                 <filter string="Método Culqi" name="group_by_culqi_method"
                         context="{'group_by': 'culqi_payment_method'}"/>
