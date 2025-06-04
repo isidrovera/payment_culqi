@@ -146,6 +146,13 @@
 
             this.showLoading(true);
             
+            // Actualizar configuración de Culqi con datos de la tarjeta
+            Culqi.card_number = cardData.card_number;
+            Culqi.cvv = cardData.cvv;
+            Culqi.expiration_month = cardData.expiration_month;
+            Culqi.expiration_year = cardData.expiration_year;
+            Culqi.email = cardData.email;
+            
             // Crear token con Culqi
             Culqi.createToken();
         },
@@ -341,6 +348,135 @@
                     amount: this.config.amount
                 });
             }
+        },
+
+        // Métodos adicionales para integración con Odoo
+        updateTransactionStatus: function(reference) {
+            fetch(`/payment/culqi/status?reference=${reference}`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status) {
+                    this.handleStatusUpdate(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error actualizando estado:', error);
+            });
+        },
+
+        handleStatusUpdate: function(data) {
+            if (data.status === 'done') {
+                this.showSuccess('Pago completado exitosamente');
+                setTimeout(() => {
+                    window.location.href = '/payment/status';
+                }, 2000);
+            } else if (data.status === 'pending') {
+                this.showMessage('Pago en proceso...', 'info');
+                // Volver a verificar en 5 segundos
+                setTimeout(() => {
+                    this.updateTransactionStatus(this.config.reference);
+                }, 5000);
+            }
+        }
+    };
+
+    // Funciones auxiliares para formularios de Odoo
+    window.CulqiPayment.OdooIntegration = {
+        
+        // Inicializar desde formulario de Odoo
+        initFromForm: function(formElement) {
+            const config = {
+                publicKey: formElement.dataset.publicKey,
+                checkoutMode: formElement.dataset.checkoutMode,
+                reference: formElement.dataset.reference,
+                amount: parseInt(formElement.dataset.amount),
+                currency: formElement.dataset.currency,
+                customerEmail: formElement.dataset.customerEmail,
+                description: formElement.dataset.description
+            };
+            
+            window.CulqiPayment.init(config);
+        },
+
+        // Manejar envío de formulario de pago
+        handlePaymentSubmit: function(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const paymentMethod = form.querySelector('input[name="payment_method"]:checked');
+            
+            if (!paymentMethod) {
+                window.CulqiPayment.showError('Seleccione un método de pago');
+                return;
+            }
+            
+            // Procesar según el método seleccionado
+            if (paymentMethod.value === 'card') {
+                window.CulqiPayment.processEmbeddedPayment();
+            } else {
+                // Para otros métodos (Yape, PagoEfectivo, etc.)
+                this.processAlternativeMethod(paymentMethod.value);
+            }
+        },
+
+        // Procesar métodos alternativos
+        processAlternativeMethod: function(method) {
+            const config = window.CulqiPayment.config;
+            
+            // Crear cargo directamente para métodos que no requieren token
+            fetch('/payment/culqi/create_alternative_charge', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    reference: config.reference,
+                    amount: config.amount,
+                    currency: config.currency,
+                    payment_method: method,
+                    customer_email: config.customerEmail
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (method === 'pagoefectivo') {
+                        // Mostrar información del CIP
+                        this.showPagoEfectivoInfo(data.cip_data);
+                    } else {
+                        window.location.href = data.redirect_url;
+                    }
+                } else {
+                    window.CulqiPayment.showError(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.CulqiPayment.showError('Error de conexión');
+            });
+        },
+
+        // Mostrar información de PagoEfectivo
+        showPagoEfectivoInfo: function(cipData) {
+            const infoHtml = `
+                <div class="alert alert-info">
+                    <h5>Instrucciones para PagoEfectivo</h5>
+                    <p><strong>Código CIP:</strong> ${cipData.cip_code}</p>
+                    <p><strong>Válido hasta:</strong> ${cipData.expiration_date}</p>
+                    <p>Acérquese a cualquier agente PagoEfectivo con este código para completar su pago.</p>
+                </div>
+            `;
+            
+            const container = document.getElementById('culqi-payment-container');
+            if (container) {
+                container.innerHTML = infoHtml;
+            }
         }
     };
 
@@ -350,6 +486,16 @@
         if (typeof window.culqiConfig !== 'undefined') {
             window.CulqiPayment.init(window.culqiConfig);
         }
+
+        // Configurar formularios de pago
+        const paymentForms = document.querySelectorAll('.culqi-payment-form');
+        paymentForms.forEach(form => {
+            window.CulqiPayment.OdooIntegration.initFromForm(form);
+            
+            form.addEventListener('submit', 
+                window.CulqiPayment.OdooIntegration.handlePaymentSubmit
+            );
+        });
     });
 
     // Exponer funciones globales si es necesario

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Menú principal Culqi en Contabilidad -->
+    <menuitem id="menu_culqi_main"
+              name="Culqi"
+              parent="account.menu_finance"
+              sequence="100"
+              groups="account.group_account_user"/>
+
+    <!-- Submenú: Transacciones -->
+    <menuitem id="menu_culqi_transactions"
+              name="Transacciones"
+              parent="menu_culqi_main"
+              action="action_payment_transaction_culqi"
+              sequence="10"/>
+
+    <!-- Submenú: Pagos -->
+    <menuitem id="menu_culqi_payments"
+              name="Pagos"
+              parent="menu_culqi_main"
+              action="action_account_payment_culqi"
+              sequence="20"/>
+
+    <!-- Submenú: Reembolsos -->
+    <menuitem id="menu_culqi_refunds"
+              name="Reembolsos"
+              parent="menu_culqi_main"
+              action="action_account_payment_culqi_refunds"
+              sequence="30"/>
+
+    <!-- Submenú: Facturas Culqi -->
+    <menuitem id="menu_culqi_invoices"
+              name="Facturas"
+              parent="menu_culqi_main"
+              action="action_account_moves_culqi"
+              sequence="40"/>
+
+    <!-- Submenú: Configuración -->
+    <menuitem id="menu_culqi_configuration"
+              name="Configuración"
+              parent="menu_culqi_main"
+              sequence="90"
+              groups="account.group_account_manager"/>
+
+    <!-- Submenú: Proveedores de Pago -->
+    <menuitem id="menu_culqi_providers"
+              name="Proveedores Culqi"
+              parent="menu_culqi_configuration"
+              action="payment.action_payment_provider"
+              sequence="10"/>
+
+    <!-- Submenú: Métodos de Pago -->
+    <menuitem id="menu_culqi_methods"
+              name="Métodos de Pago"
+              parent="menu_culqi_configuration"
+              action="payment.action_payment_method"
+              sequence="20"/>
+
+    <!-- Acción personalizada para proveedores Culqi -->
+    <record id="action_payment_provider_culqi" model="ir.actions.act_window">
+        <field name="name">Proveedores Culqi</field>
+        <field name="res_model">payment.provider</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('code', '=', 'culqi')]</field>
+        <field name="context">{
+            'default_code': 'culqi',
+            'search_default_culqi': 1
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                ¡Configura tu proveedor Culqi!
+            </p>
+            <p>
+                Configura las credenciales y opciones de tu cuenta Culqi para
+                comenzar a procesar pagos.
+            </p>
+        </field>
+    </record>
+
+    <!-- Actualizar menú de configuración para usar acción personalizada -->
+    <record id="menu_culqi_providers" model="ir.ui.menu">
+        <field name="action" ref="action_payment_provider_culqi"/>
+    </record>
+
+    <!-- Menú en configuración general de pagos -->
+    <menuitem id="menu_payment_culqi_config"
+              name="Culqi"
+              parent="payment.menu_payment_config"
+              action="action_payment_provider_culqi"
+              sequence="50"
+              groups="account.group_account_manager"/>
+
+</odoo>

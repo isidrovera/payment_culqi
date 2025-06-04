@@ -8,6 +8,7 @@ from werkzeug.exceptions import Forbidden
 from odoo import http, _
 from odoo.exceptions import ValidationError
 from odoo.http import request
+from odoo.addons.payment.controllers.portal import PaymentPortal
 
 _logger = logging.getLogger(__name__)
 
@@ -196,7 +197,7 @@ class CulqiController(http.Controller):
 
         # Verificar firma si está configurada
         if signature and tx.provider_id.culqi_secret_key:
-            if not tx._culqi_verify_webhook_signature(payload, signature):
+            if not tx.provider_id._culqi_verify_webhook_signature(payload, signature):
                 _logger.error("Firma de webhook Culqi inválida")
                 raise Forbidden("Invalid signature")
 
@@ -230,7 +231,7 @@ class CulqiController(http.Controller):
 
         # Verificar firma
         if signature and tx.provider_id.culqi_secret_key:
-            if not tx._culqi_verify_webhook_signature(payload, signature):
+            if not tx.provider_id._culqi_verify_webhook_signature(payload, signature):
                 _logger.error("Firma de webhook reembolso Culqi inválida")
                 raise Forbidden("Invalid signature")
 
@@ -245,8 +246,12 @@ class CulqiController(http.Controller):
             ], limit=1)
             
             if not refund_tx:
-                refund_tx = tx._create_refund_transaction(refund_amount)
+                refund_tx = tx._create_child_transaction(
+                    refund_amount,
+                    operation='refund'
+                )
                 refund_tx.culqi_charge_id = refund_data.get('id')
+                refund_tx.provider_reference = refund_data.get('id')
             
             refund_tx._set_done()
             _logger.info("Reembolso Culqi procesado: %s", refund_data.get('id'))
@@ -337,7 +342,7 @@ class CulqiController(http.Controller):
             currency_obj = request.env['res.currency'].sudo().search([('name', '=', currency)], limit=1)
             
             try:
-                method._get_culqi_payment_form_data(amount, currency_obj)
+                method.get_culqi_form_data(amount, currency_obj)
                 return {'valid': True}
             except ValidationError as e:
                 return {'valid': False, 'error': str(e)}
@@ -345,3 +350,61 @@ class CulqiController(http.Controller):
         except Exception as e:
             _logger.error("Error validando datos Culqi: %s", str(e))
             return {'valid': False, 'error': 'Error de validación'}
+
+
+class CulqiPaymentPortal(PaymentPortal):
+    """Extensión del portal de pagos para manejar datos específicos de Culqi"""
+
+    @staticmethod
+    def _validate_transaction_kwargs(kwargs, additional_allowed_keys=()):
+        """Valida argumentos de transacción incluyendo parámetros específicos de Culqi"""
+        
+        if kwargs.get('provider_id'):
+            provider_id = request.env['payment.provider'].sudo().browse(int(kwargs['provider_id']))
+            if provider_id.code == 'culqi':
+                # Agregar claves adicionales permitidas para Culqi
+                culqi_allowed_keys = (
+                    'culqi_token_id',
+                    'culqi_payment_method', 
+                    'culqi_installments',
+                    'culqi_email',
+                    'culqi_device_fingerprint'
+                )
+                
+                if isinstance(additional_allowed_keys, tuple):
+                    additional_allowed_keys += culqi_allowed_keys
+                elif isinstance(additional_allowed_keys, set):
+                    additional_allowed_keys.update(culqi_allowed_keys)
+                else:
+                    additional_allowed_keys = culqi_allowed_keys
+        
+        super(CulqiPaymentPortal, CulqiPaymentPortal)._validate_transaction_kwargs(
+            kwargs, 
+            additional_allowed_keys=additional_allowed_keys
+        )
+
+    def _create_transaction(
+        self, provider_id, payment_method_id, token_id, amount, currency_id, partner_id, flow,
+        tokenization_requested, landing_route, reference_prefix=None, is_validation=False,
+        custom_create_values=None, **kwargs
+    ):
+        """Crea transacción incluyendo valores específicos de Culqi"""
+        
+        # Extraer valores específicos de Culqi
+        culqi_custom_create_values = {
+            "culqi_token_id": kwargs.pop("culqi_token_id", None),
+            "culqi_payment_method": kwargs.pop("culqi_payment_method", None),
+            "culqi_installments": kwargs.pop("culqi_installments", None),
+            "culqi_email": kwargs.pop("culqi_email", None),
+            "culqi_device_fingerprint": kwargs.pop("culqi_device_fingerprint", None)
+        }
+        
+        # Combinar con valores personalizados existentes
+        custom_create_values = custom_create_values or {}
+        custom_create_values.update(culqi_custom_create_values)
+        
+        return super()._create_transaction(
+            provider_id, payment_method_id, token_id, amount, currency_id, partner_id, flow,
+            tokenization_requested, landing_route, reference_prefix=reference_prefix, 
+            is_validation=is_validation, custom_create_values=custom_create_values, **kwargs
+        )

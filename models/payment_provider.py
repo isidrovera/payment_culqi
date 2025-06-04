@@ -3,11 +3,12 @@
 import logging
 import requests
 import json
+import hmac
+import hashlib
 from werkzeug import urls
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
-from odoo.addons.payment import utils as payment_utils
 
 _logger = logging.getLogger(__name__)
 
@@ -128,9 +129,16 @@ class PaymentProvider(models.Model):
                             "Las llaves pública y secreta deben ser del mismo ambiente (test o live)"
                         ))
 
+    def _compute_feature_support_fields(self):
+        """Override para habilitar características adicionales."""
+        super()._compute_feature_support_fields()
+        self.filtered(lambda p: p.code == 'culqi').update({
+            'support_refund': 'partial',
+            'support_manual_capture': False,
+        })
+
     def _get_culqi_api_url(self):
         """Retorna la URL base de la API de Culqi"""
-        # Culqi usa la misma URL para test y producción
         return 'https://api.culqi.com/v2'
 
     def _culqi_make_request(self, endpoint, data=None, method='POST'):
@@ -226,21 +234,21 @@ class PaymentProvider(models.Model):
         """Retorna las monedas soportadas por Culqi"""
         culqi_currencies = super()._get_supported_currencies()
         if self.code == 'culqi':
-            culqi_currencies = ['PEN', 'USD']  # Culqi soporta principalmente PEN y USD
+            culqi_currencies = ['PEN', 'USD']
         return culqi_currencies
 
     def _get_validation_amount(self):
         """Monto mínimo para validación"""
         res = super()._get_validation_amount()
         if self.code == 'culqi':
-            return 1.00  # 1 PEN mínimo en Culqi
+            return 1.00
         return res
 
     def _get_default_payment_method_codes(self):
         """Métodos de pago por defecto para Culqi"""
         default_codes = super()._get_default_payment_method_codes()
         if self.code == 'culqi':
-            default_codes = ['card']  # Por defecto solo tarjetas
+            default_codes = ['card']
             if self.culqi_enable_yape:
                 default_codes.append('yape')
             if self.culqi_enable_pagoefectivo:
@@ -250,14 +258,31 @@ class PaymentProvider(models.Model):
         return default_codes
 
     @api.model
+    def _get_all_culqi_methods_codes(self):
+        """Retorna lista de códigos de métodos para Culqi"""
+        return self.search([('code', '=', 'culqi')]).with_context(active_test=False).mapped('payment_method_ids.code')
+
+    @api.model
     def _get_compatible_providers(self, *args, currency_id=None, **kwargs):
         """Filtra proveedores compatibles según la moneda"""
         providers = super()._get_compatible_providers(*args, currency_id=currency_id, **kwargs)
         
         if currency_id:
             currency = self.env['res.currency'].browse(currency_id)
-            # Culqi principalmente soporta PEN, también USD
             if currency.name not in ['PEN', 'USD']:
                 providers = providers.filtered(lambda p: p.code != 'culqi')
         
         return providers
+
+    def _culqi_verify_webhook_signature(self, payload, signature):
+        """Verifica la firma del webhook de Culqi"""
+        if not self.culqi_secret_key:
+            return False
+            
+        expected_signature = hmac.new(
+            self.culqi_secret_key.encode('utf-8'),
+            payload.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        
+        return hmac.compare_digest(signature, expected_signature)

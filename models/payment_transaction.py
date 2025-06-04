@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
+
 import logging
 import json
-import hashlib
-import hmac
 from datetime import datetime
 from werkzeug import urls
 
@@ -91,7 +91,6 @@ class PaymentTransaction(models.Model):
         readonly=True
     )
     
-    # Campos adicionales para integración completa
     culqi_reminder_payment_id = fields.Many2one(
         'account.payment', 
         string="Culqi Reminder Payment", 
@@ -113,33 +112,6 @@ class PaymentTransaction(models.Model):
         string="Device Fingerprint",
         help="Huella digital del dispositivo para seguridad"
     )
-    
-    # Campos adicionales para integración completa
-    culqi_reminder_payment_id = fields.Many2one(
-        'account.payment', 
-        string="Culqi Reminder Payment", 
-        readonly=True,
-        help="Pago de recordatorio para métodos combinados"
-    )
-    
-    culqi_email = fields.Char(
-        string="Email del Cliente",
-        help="Email proporcionado para el pago"
-    )
-    
-    culqi_installments = fields.Integer(
-        string="Número de Cuotas",
-        help="Número de cuotas para Cuotéalo"
-    )
-    
-    culqi_device_fingerprint = fields.Char(
-        string="Device Fingerprint",
-        help="Huella digital del dispositivo para seguridad"
-    )
-
-    # ==========================================
-    # MÉTODOS DE PROCESAMIENTO DE TRANSACCIONES
-    # ==========================================
 
     def _get_specific_rendering_values(self, processing_values):
         """Obtiene valores específicos para renderizar el formulario de pago"""
@@ -148,20 +120,17 @@ class PaymentTransaction(models.Model):
         if self.provider_code != 'culqi':
             return res
 
-        # Generar token de formulario si es necesario
-        form_token = self._culqi_generate_form_token()
-        
+        base_url = self.provider_id.get_base_url()
         culqi_values = {
             'public_key': self.provider_id.culqi_public_key,
-            'form_token': form_token,
             'checkout_mode': self.provider_id.culqi_checkout_mode,
             'return_url': urls.url_join(
-                self.provider_id.get_base_url(),
+                base_url,
                 f'/payment/culqi/return?ref={self.reference}'
             ),
             'webhook_url': self.provider_id.culqi_webhook_url,
             'reference': self.reference,
-            'amount_cents': int(self.amount * 100),  # Culqi maneja centavos
+            'amount_cents': int(self.amount * 100),
             'currency': self.currency_id.name,
             'customer_email': self.partner_email or '',
             'description': f"Pago {self.reference}",
@@ -170,19 +139,11 @@ class PaymentTransaction(models.Model):
         res.update(culqi_values)
         return res
 
-    def _culqi_generate_form_token(self):
-        """Genera un token de formulario para Culqi (si es necesario)"""
-        # En algunos casos, Culqi puede requerir un token de formulario
-        # Por ahora retornamos None, se puede implementar según necesidades
-        return None
-
     def _send_payment_request(self):
         """Envía la petición de pago a Culqi"""
         if self.provider_code != 'culqi':
             return super()._send_payment_request()
 
-        # Para Culqi, el pago se procesa cuando se recibe el webhook
-        # o cuando se confirma desde el frontend
         _logger.info("Enviando petición de pago Culqi para transacción %s", self.reference)
         return self._set_pending()
 
@@ -254,7 +215,7 @@ class PaymentTransaction(models.Model):
         
         # Información financiera
         if data.get('total_fee'):
-            self.culqi_fee = data.get('total_fee') / 100  # Convertir de centavos
+            self.culqi_fee = data.get('total_fee') / 100
         if data.get('net_amount'):
             self.culqi_net_amount = data.get('net_amount') / 100
         
@@ -264,26 +225,45 @@ class PaymentTransaction(models.Model):
                 data.get('creation_date') / 1000
             )
 
-    # ==========================================
-    # MÉTODOS DE VALIDACIÓN Y SEGURIDAD
-    # ==========================================
-
-    def _culqi_verify_webhook_signature(self, payload, signature):
-        """Verifica la firma del webhook de Culqi"""
-        if not self.provider_id.culqi_secret_key:
-            return False
-            
-        expected_signature = hmac.new(
-            self.provider_id.culqi_secret_key.encode('utf-8'),
-            payload.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
+    def _culqi_create_charge(self, token_id):
+        """Crea un cargo en Culqi usando un token"""
+        self.ensure_one()
         
-        return hmac.compare_digest(signature, expected_signature)
-
-    # ==========================================
-    # MÉTODOS DE REEMBOLSO
-    # ==========================================
+        charge_data = {
+            'amount': int(self.amount * 100),  # Convertir a centavos
+            'currency_code': self.currency_id.name,
+            'email': self.partner_email or self.culqi_email,
+            'source_id': token_id,
+            'description': f"Pago {self.reference}",
+            'metadata': {
+                'reference': self.reference,
+                'transaction_id': self.id,
+                'partner_id': self.partner_id.id if self.partner_id else None,
+            }
+        }
+        
+        # Agregar campos opcionales
+        if self.culqi_installments:
+            charge_data['installments'] = self.culqi_installments
+        
+        if self.culqi_device_fingerprint:
+            charge_data['antifraud_details'] = {
+                'device_fingerprint': self.culqi_device_fingerprint
+            }
+        
+        try:
+            result = self.provider_id._culqi_make_request('/charges', charge_data)
+            
+            if result.get('object') == 'charge':
+                self.culqi_charge_id = result.get('id')
+                self.provider_reference = result.get('id')
+                return result
+            else:
+                raise UserError(_("Error creando cargo en Culqi: %s") % result.get('message', 'Error desconocido'))
+                
+        except Exception as e:
+            _logger.error("Error creando cargo Culqi: %s", str(e))
+            raise
 
     def _send_refund_request(self, amount_to_refund=None):
         """Envía petición de reembolso a Culqi"""
@@ -296,7 +276,7 @@ class PaymentTransaction(models.Model):
         refund_amount = amount_to_refund or self.amount
         refund_data = {
             'charge_id': self.culqi_charge_id,
-            'amount': int(refund_amount * 100),  # Convertir a centavos
+            'amount': int(refund_amount * 100),
             'reason': 'requested_by_customer'
         }
 
@@ -304,9 +284,13 @@ class PaymentTransaction(models.Model):
             result = self.provider_id._culqi_make_request('/refunds', refund_data)
             
             if result.get('object') == 'refund':
-                # Crear registro de reembolso
-                refund_tx = self._create_refund_transaction(refund_amount)
+                # Crear transacción de reembolso
+                refund_tx = self._create_child_transaction(
+                    refund_amount,
+                    operation='refund'
+                )
                 refund_tx.culqi_charge_id = result.get('id')
+                refund_tx.provider_reference = result.get('id')
                 refund_tx._set_done()
                 
                 _logger.info("Reembolso Culqi exitoso: %s", result.get('id'))
@@ -322,60 +306,14 @@ class PaymentTransaction(models.Model):
         """Método sobrescrito para crear pagos con integración de journals Culqi"""
         if self.provider_id.code == 'culqi':
             culqi_method = self.payment_method_id
-            if culqi_method and culqi_method.journal_id:
+            if culqi_method and hasattr(culqi_method, 'journal_id') and culqi_method.journal_id:
                 culqi_method_payment_code = culqi_method._get_journal_method_code()
                 payment_method_line = culqi_method.journal_id.inbound_payment_method_line_ids.filtered(
                     lambda l: l.code == culqi_method_payment_code
                 )
-                extra_create_values['journal_id'] = culqi_method.journal_id.id
-                extra_create_values['payment_method_line_id'] = payment_method_line.id
-
-            # Manejo especial para métodos combinados (como PagoEfectivo + otro método)
-            if culqi_method.code in ['pagoefectivo', 'cuotealo']:
-                # Obtener información del pago desde Culqi
-                culqi_payment = self.provider_id._culqi_make_request(f'/charges/{self.provider_reference}', method='GET')
-                
-                # Si hay un método de recordatorio (pago combinado)
-                remainder_method_code = culqi_payment.get('source', {}).get('remainder_method')
-                if remainder_method_code:
-                    primary_journal = culqi_method.journal_id or self.provider_id.journal_id
-                    
-                    # Buscar método de recordatorio
-                    remainder_method = self.provider_id.payment_method_ids.filtered(
-                        lambda m: m.code == remainder_method_code
-                    )
-                    remainder_journal = remainder_method.journal_id or self.provider_id.journal_id
-
-                    # Si son journals diferentes, dividir el pago
-                    if primary_journal != remainder_journal:
-                        primary_amount = culqi_payment.get('source', {}).get('installment_amount_cents', 0) / 100
-                        remainder_amount = culqi_payment.get('amount_cents', 0) / 100 - primary_amount
-                        
-                        if primary_amount > 0:
-                            extra_create_values['amount'] = abs(primary_amount)
-
-                            # Crear pago de recordatorio
-                            remainder_payment_line = remainder_method.journal_id.inbound_payment_method_line_ids.filtered(
-                                lambda pm_line: pm_line.code == remainder_method._get_journal_method_code()
-                            )
-
-                            remainder_create_values = {
-                                **extra_create_values,
-                                'amount': remainder_amount,
-                                'payment_type': 'inbound' if self.amount > 0 else 'outbound',
-                                'currency_id': self.currency_id.id,
-                                'partner_id': self.partner_id.commercial_partner_id.id,
-                                'partner_type': 'customer',
-                                'journal_id': remainder_journal.id,
-                                'company_id': self.provider_id.company_id.id,
-                                'payment_method_line_id': remainder_payment_line.id,
-                                'payment_transaction_id': self.id,
-                                'memo': self.reference,
-                            }
-
-                            remainder_payment = self.env['account.payment'].create(remainder_create_values)
-                            remainder_payment.action_post()
-                            self.culqi_reminder_payment_id = remainder_payment
+                if payment_method_line:
+                    extra_create_values['journal_id'] = culqi_method.journal_id.id
+                    extra_create_values['payment_method_line_id'] = payment_method_line.id
 
         payment_record = super()._create_payment(**extra_create_values)
 
@@ -399,10 +337,6 @@ class PaymentTransaction(models.Model):
             )
         return message
 
-    # ==========================================
-    # MÉTODOS DE INFORMACIÓN
-    # ==========================================
-
     def action_view_culqi_transaction(self):
         """Acción para ver la transacción en el panel de Culqi"""
         self.ensure_one()
@@ -410,7 +344,6 @@ class PaymentTransaction(models.Model):
         if not self.culqi_charge_id:
             raise UserError(_("Esta transacción no tiene un ID de cargo en Culqi"))
         
-        # URL del panel de Culqi (puede variar)
         culqi_panel_url = "https://panel.culqi.com"
         transaction_url = f"{culqi_panel_url}/transactions/{self.culqi_charge_id}"
         
