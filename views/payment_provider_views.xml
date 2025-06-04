@@ -74,7 +74,7 @@
         <field name="model">payment.transaction</field>
         <field name="inherit_id" ref="payment.payment_transaction_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='provider_id']" position="after">
+            
             <xpath expr="//field[@name='provider_id']" position="after">
                 <group string="Información de Culqi" invisible="provider_code != 'culqi'">
                     
