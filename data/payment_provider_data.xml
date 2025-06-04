@@ -11,8 +11,7 @@
         <field name="is_published">false</field>
         <field name="company_id" ref="base.main_company"/>
         <field name="support_tokenization">false</field>
-        <!-- CAMPO CORREGIDO: usar 'none' en lugar de 'false' -->
-        <field name="support_manual_capture">none</field>
+        <!-- NO definir support_manual_capture aquí - será manejado por el método compute -->
         <field name="support_refund">partial</field>
         <field name="support_express_checkout">false</field>
         <!-- Campos específicos de Culqi -->

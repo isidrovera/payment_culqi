@@ -268,8 +268,8 @@ class PaymentProvider(models.Model):
         super()._compute_feature_support_fields()
         if self.code == 'culqi':
             self.update({
-                'support_manual_capture': 'none',  # Culqi no soporta captura manual
-                'support_refund': 'partial',        # Culqi soporta reembolsos parciales
-                'support_tokenization': False,      # Por ahora sin tokenización
-                'support_express_checkout': False,  # Sin express checkout
+                'support_manual_capture': False,  # Culqi no soporta captura manual
+                'support_refund': 'partial',       # Culqi soporta reembolsos parciales
+                'support_tokenization': False,     # Por ahora sin tokenización
+                'support_express_checkout': False, # Sin express checkout
             })
