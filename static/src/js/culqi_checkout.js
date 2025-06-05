@@ -134,6 +134,7 @@ paymentForm.include({
                 });
 
                 // Manejar el pago
+                const self = this; // Guardar contexto
                 document.getElementById('pay_button').addEventListener('click', async function(e) {
                     e.preventDefault();
                     
@@ -162,10 +163,16 @@ paymentForm.include({
 
                     const [month, year] = expiryDate.split('/');
 
+                    // Verificar que tenemos la referencia
+                    const txRef = self.txReference || 'NO_REFERENCE';
+                    console.log('🔍 Referencia de transacción:', txRef);
+
                     console.log('💳 Procesando pago con datos:', {
                         card: cardNumber.substring(0, 4) + '****',
                         expiry: expiryDate,
-                        email: email
+                        email: email,
+                        provider_id: providerId,
+                        reference: txRef
                     });
 
                     // Deshabilitar botón y mostrar loading
@@ -177,7 +184,7 @@ paymentForm.include({
                         console.log('📤 Enviando datos al backend...');
                         const result = await rpc('/payment/culqi/process_card', {
                             provider_id: providerId,
-                            reference: this.txReference,
+                            reference: txRef,
                             card_data: {
                                 card_number: cardNumber,
                                 expiration_month: month,

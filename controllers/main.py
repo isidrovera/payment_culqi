@@ -44,18 +44,35 @@ class CulqiController(http.Controller):
         return {}
 
     @http.route(_process_card_url, type='json', auth='public', methods=['POST'])
-    def culqi_process_card(self, provider_id, reference, card_data, amount):
+    def culqi_process_card(self, **kwargs):
         """ Procesa datos de tarjeta directamente, crea token y ejecuta el cobro.
 
-        :param int provider_id: ID del proveedor 'culqi'
-        :param str reference: Referencia de la transacción Odoo
-        :param dict card_data: Datos de la tarjeta (card_number, expiration_month, etc.)
-        :param int amount: Monto en centavos
+        :param dict kwargs: Parámetros que incluyen provider_id, reference, card_data, amount
         :return: dict con success/error y redirect_url
         """
         try:
-            _logger.info("🚀 Procesando tarjeta para referencia: %s, monto: %s centavos", reference, amount)
+            # Extraer parámetros
+            provider_id = kwargs.get('provider_id')
+            reference = kwargs.get('reference')
+            card_data = kwargs.get('card_data', {})
+            amount = kwargs.get('amount')
+
+            _logger.info("🚀 Procesando tarjeta - Provider: %s, Referencia: %s, Monto: %s centavos", 
+                        provider_id, reference, amount)
             
+            # Validaciones básicas
+            if not provider_id:
+                return {'success': False, 'error': 'ID de proveedor requerido'}
+            
+            if not reference:
+                return {'success': False, 'error': 'Referencia de transacción requerida'}
+                
+            if not card_data:
+                return {'success': False, 'error': 'Datos de tarjeta requeridos'}
+                
+            if not amount:
+                return {'success': False, 'error': 'Monto requerido'}
+
             # Obtener proveedor Culqi
             provider = request.env['payment.provider'].browse(provider_id).sudo()
             if not provider or provider.code != 'culqi':
