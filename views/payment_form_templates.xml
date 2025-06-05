@@ -3,13 +3,25 @@
 
     <!-- Añadir atributos al radio button para cargar el botón Culqi -->
     <template id="payment_culqi.method_form" inherit_id="payment.method_form">
-        <xpath expr="//input[@name='o_payment_radio']" position="attributes">
+       <xpath expr="//input[@name='o_payment_radio']" position="attributes">
             <attribute name="t-att-data-provider-code">provider_sudo.code</attribute>
+            
             <attribute name="t-att-data-culqi-inline-form-values">
-                provider_sudo and provider_sudo.code == 'culqi' and {
-                    'provider_id': provider_sudo.id,
-                    'public_key': provider_sudo.culqi_public_key,
-                } or {}
+                <t t-if="provider_sudo and provider_sudo.code == 'culqi'">
+                    <t t-set="culqi_values" t-value="json.dumps({
+                        'provider_id': provider_sudo.id,
+                        'public_key': provider_sudo.culqi_public_key or '',
+                        'logo_url': provider_sudo.culqi_logo_url or '',
+                        'banner_color': provider_sudo.culqi_banner_color or '#0033A0',
+                        'button_color': provider_sudo.culqi_button_color or '#0033A0',
+                        'rsa_id': provider_sudo.culqi_rsa_id or '',
+                        'rsa_public_key': provider_sudo.culqi_rsa_public_key or '',
+                    })"/>
+                </t>
+                <t t-if="not (provider_sudo and provider_sudo.code == 'culqi')">
+                    <t t-set="culqi_values">{}</t>
+                </t>
+                <t t-esc="culqi_values"/>
             </attribute>
         </xpath>
     </template>
@@ -18,10 +30,17 @@
     <template id="payment_submit_button_inherit_culqi" inherit_id="payment.submit_button">
         <xpath expr="//button[@name='o_payment_submit_button']" position="before">
             <div id="o_culqi_button_container" class="d-none" data-is-culqi="true">
-                <div id="o_culqi_checkout_placeholder"/>
+                <div id="o_culqi_checkout_placeholder" class="text-center p-3">
+                    <!-- El botón se genera dinámicamente por JavaScript -->
+                </div>
             </div>
-            <div id="o_culqi_loading" class="d-flex justify-content-center d-none">
-                <div class="spinner-border"/>
+            <div id="o_culqi_loading" class="d-flex justify-content-center align-items-center d-none" style="min-height: 100px;">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Cargando...</span>
+                    </div>
+                    <div class="mt-2">Cargando Culqi...</div>
+                </div>
             </div>
         </xpath>
     </template>

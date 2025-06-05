@@ -1,17 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <record id="view_payment_transaction_form_inherit_culqi" model="ir.ui.view">
-        <field name="name">payment.transaction.form.inherit.culqi</field>
-        <field name="model">payment.transaction</field>
-        <field name="inherit_id" ref="payment.payment_transaction_form"/>
+    <record id="view_payment_provider_form_inherit_culqi" model="ir.ui.view">
+        <field name="name">payment.provider.form.inherit.culqi</field>
+        <field name="model">payment.provider</field>
+        <field name="inherit_id" ref="payment.payment_provider_form"/>
         <field name="arch" type="xml">
-            <field name="provider_reference" position="after">
-                <field name="culqi_charge_id"
-                       readonly="1"
-                       invisible="provider_code != 'culqi'"
-                       groups="base.group_no_one"/>
-            </field>
+            <group name="provider_credentials" position="inside">
+                <group invisible="code != 'culqi'" string="Credenciales Culqi">
+                    <field name="culqi_public_key" 
+                           required="code == 'culqi' and state != 'disabled'"
+                           placeholder="pk_test_xxxxxxxxxx"/>
+                    <field name="culqi_secret_key" 
+                           password="True" 
+                           required="code == 'culqi' and state != 'disabled'"
+                           placeholder="sk_test_xxxxxxxxxx"/>
+                    <button name="action_culqi_check_connection"
+                            type="object"
+                            string="🔍 Probar Conexión"
+                            class="btn-secondary"
+                            invisible="not culqi_secret_key"/>
+                </group>
+                
+                <group invisible="code != 'culqi'" string="Personalización del Checkout">
+                    <field name="culqi_logo_url" 
+                           placeholder="https://ejemplo.com/logo.png"/>
+                    <field name="culqi_banner_color" 
+                           widget="color"
+                           placeholder="#0033A0"/>
+                    <field name="culqi_button_color" 
+                           widget="color"
+                           placeholder="#0033A0"/>
+                </group>
+                
+                <group invisible="code != 'culqi'" string="Cifrado RSA (Opcional)">
+                    <field name="culqi_rsa_id" 
+                           placeholder="rsa_xxxxxxxxxx"/>
+                    <field name="culqi_rsa_public_key" 
+                           placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"/>
+                </group>
+                
+                <group invisible="code != 'culqi'" string="Documentación">
+                    <div colspan="2" class="alert alert-info">
+                        <strong>📖 Documentación:</strong><br/>
+                        • <a href="https://docs.culqi.com/es/documentacion/checkout/v4/culqi-checkout" target="_blank">Culqi Checkout v4</a><br/>
+                        • <a href="https://panel.culqi.com/" target="_blank">Panel de Culqi</a><br/>
+                        • <strong>Monedas soportadas:</strong> PEN, USD<br/>
+                        • <strong>Métodos:</strong> Tarjetas, Yape, PagoEfectivo, Billeteras móviles
+                    </div>
+                </group>
+            </group>
         </field>
     </record>
 

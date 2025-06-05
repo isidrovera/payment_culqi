@@ -17,15 +17,36 @@ class PaymentProvider(models.Model):
         ondelete={'culqi': 'set default'}
     )
 
+    # Campos obligatorios para Culqi
     culqi_public_key = fields.Char(
         string="Culqi Public Key",
-        required_if_provider='culqi'
+        required_if_provider='culqi',
+        help="Clave pública de Culqi para el frontend"
     )
     culqi_secret_key = fields.Char(
         string="Culqi Secret Key",
         required_if_provider='culqi',
-        groups='base.group_system'
+        groups='base.group_system',
+        help="Clave secreta de Culqi para el backend"
     )
+    
+    # Campos para personalización del checkout (nuevos)
+    culqi_logo_url = fields.Char(
+        string="Logo URL",
+        help="URL del logo a mostrar en el checkout de Culqi (opcional)"
+    )
+    culqi_banner_color = fields.Char(
+        string="Color del Banner",
+        help="Color hexadecimal para el banner (ej: #0033A0)",
+        default="#0033A0"
+    )
+    culqi_button_color = fields.Char(
+        string="Color del Botón",
+        help="Color hexadecimal para el botón de pago (ej: #0033A0)",
+        default="#0033A0"
+    )
+    
+    # Campos para cifrado RSA (opcionales)
     culqi_rsa_id = fields.Char(
         string="Culqi RSA ID",
         help="ID de la llave pública RSA (para cifrado de payloads)"
@@ -66,7 +87,7 @@ class PaymentProvider(models.Model):
         """ Añade el método Culqi como predeterminado si corresponde. """
         default_codes = super()._get_default_payment_method_codes()
         if self.code == 'culqi':
-            return default_codes | {'culqi'}
+            return default_codes | {'culqi', 'card'}  # Agregamos 'card' también
         return default_codes
 
     def _get_supported_currencies(self):
@@ -75,24 +96,62 @@ class PaymentProvider(models.Model):
         if self.code == 'culqi':
             return supported.filtered(lambda c: c.name in ('PEN', 'USD'))
         return supported
+        
     def action_culqi_check_connection(self):
+        """Probar conexión con Culqi con mejor manejo de respuestas"""
         self.ensure_one()
         if self.code != 'culqi':
             return
+
+        if not self.culqi_secret_key:
+            raise UserError(_("❌ Falta configurar la clave secreta de Culqi"))
 
         headers = {
             'Authorization': f'Bearer {self.culqi_secret_key}',
             'Content-Type': 'application/json',
         }
 
-        # Culqi recomienda probar con GET /v1/charges o /v1/orders
+        # Probar con endpoint de órdenes
         url = 'https://api.culqi.com/v2/orders'
 
         try:
             response = requests.get(url, headers=headers, timeout=10)
+            
             if response.status_code == 200:
-                raise UserError(_("✅ Conexión exitosa con Culqi."))
+                # Conexión exitosa
+                message = "✅ Conexión exitosa con Culqi"
+                msg_type = 'success'
+            elif response.status_code == 401:
+                # Error de autenticación - clave incorrecta
+                message = "❌ Clave secreta de Culqi incorrecta"
+                msg_type = 'danger'
+            elif response.status_code == 403:
+                # Acceso denegado - pero la clave es válida
+                message = "✅ Clave secreta válida (acceso restringido al endpoint)"
+                msg_type = 'success'
             else:
-                raise UserError(_("❌ Culqi respondió con error:\n%s") % response.text)
+                # Otro error
+                message = f"⚠️ Culqi respondió con código {response.status_code}"
+                msg_type = 'warning'
+                
+        except requests.exceptions.ConnectionError:
+            message = "❌ No se pudo conectar con Culqi. Verificar conexión a internet"
+            msg_type = 'danger'
+        except requests.exceptions.Timeout:
+            message = "❌ Tiempo de espera agotado conectando con Culqi"
+            msg_type = 'danger'
         except Exception as e:
-            raise UserError(_("❌ No se pudo conectar con Culqi:\n%s") % str(e))
+            message = f"❌ Error inesperado: {str(e)}"
+            msg_type = 'danger'
+
+        # Mostrar notificación en lugar de UserError
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Prueba de Conexión Culqi',
+                'message': message,
+                'type': msg_type,
+                'sticky': False,
+            }
+        }
