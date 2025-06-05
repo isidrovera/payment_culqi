@@ -13,7 +13,7 @@ paymentForm.include({
             return;
         }
 
-        console.log('🚀 Iniciando configuración de Culqi...');
+        console.log('🚀 Iniciando configuración de Culqi v4...');
         this._hideInputs();
         this._setPaymentFlow('direct');
 
@@ -71,32 +71,33 @@ paymentForm.include({
 
             // Si aún no hay monto, usar un valor por defecto para testing
             if (!orderAmount || orderAmount <= 0) {
-                orderAmount = 850.00; // Valor de fallback para testing
+                orderAmount = 122.00; // Valor de fallback para testing
                 console.log('⚠️ Usando monto de fallback:', orderAmount);
             }
 
             const amountInCents = Math.round(orderAmount * 100);
             console.log('💵 Monto final: S/ ' + orderAmount + ' → ' + amountInCents + ' centavos');
 
-            // Cargar SDK de Culqi (documentación oficial)
-            console.log('📦 Cargando SDK de Culqi...');
+            // Cargar SDK de Culqi v4
+            console.log('📦 Cargando SDK de Culqi v4...');
             await loadJS('https://checkout.culqi.com/js/v4');
 
             // Verificar que Culqi se haya cargado
             if (typeof window.Culqi === 'undefined') {
                 throw new Error('No se pudo cargar el SDK de Culqi');
             }
-            console.log('✅ SDK de Culqi cargado exitosamente');
+            console.log('✅ SDK de Culqi v4 cargado exitosamente');
 
-            // Configurar Culqi según documentación oficial
+            // Configurar clave pública
             window.Culqi.publicKey = culqiPublicKey;
             console.log('🔑 Clave pública configurada: pk_***');
-            
-            // Configurar settings (obligatorio según documentación)
+
+            // Configurar settings obligatorios para v4
             const settings = {
                 title: 'Pago Odoo',
-                currency: 'PEN', // Forzar PEN para Perú
-                amount: amountInCents, // Culqi espera centavos
+                currency: 'PEN',
+                amount: amountInCents,
+                description: 'Pago desde Odoo'
             };
 
             // Agregar cifrado RSA si está configurado
@@ -104,55 +105,40 @@ paymentForm.include({
                 settings.xculqirsaid = inlineFormValues.rsa_id;
                 settings.rsapublickey = inlineFormValues.rsa_public_key;
                 console.log('🔐 Cifrado RSA configurado: rsa_***');
-            } else {
-                console.log('ℹ️ Sin cifrado RSA configurado');
             }
 
-            console.log('⚙️ Configurando Culqi settings:', {
-                title: settings.title,
-                currency: settings.currency,
-                amount: settings.amount,
-                hasRSA: !!(settings.xculqirsaid && settings.rsapublickey)
-            });
-
+            console.log('⚙️ Configurando Culqi settings:', settings);
             window.Culqi.settings(settings);
 
-            // Configurar opciones (opcional)
+            // Configurar opciones de estilo y comportamiento
             const options = {
-                lang: "auto",
-                installments: false, // Deshabilitamos cuotas por simplicidad
-                skipIIINsValidation: true, // Evitar validaciones CORS en testing
+                lang: "es",
+                installments: false,
                 paymentMethods: {
                     tarjeta: true,
                     yape: true,
                     bancaMovil: true,
                     agente: true,
                     billetera: true,
-                    cuotealo: true,
+                    cuotealo: false
                 },
                 style: {
                     logo: inlineFormValues.logo_url || '',
                     bannerColor: inlineFormValues.banner_color || '#0033A0',
                     buttonBackground: inlineFormValues.button_color || '#0033A0',
                     buttonText: 'Pagar ahora',
-                    buttonTextColor: '#FFFFFF',
+                    buttonTextColor: '#FFFFFF'
                 }
             };
 
-            console.log('🎨 Configurando opciones de estilo:', {
-                logo: options.style.logo || 'Sin logo',
-                bannerColor: options.style.bannerColor,
-                buttonBackground: options.style.buttonBackground
-            });
-
+            console.log('🎨 Configurando opciones de estilo...');
             window.Culqi.options(options);
 
-            // Definir función callback global (OBLIGATORIO según documentación)
-            window.culqi = async () => {
+            // Función global para manejar respuestas exitosas
+            window.culqi = async function() {
                 console.log('🔄 Callback de Culqi ejecutado');
                 
                 if (window.Culqi.token) {
-                    // Token creado exitosamente
                     console.log('✅ Token creado exitosamente: tkn_***');
                     console.log('📄 Datos del token:', {
                         id: 'tkn_***',
@@ -164,7 +150,6 @@ paymentForm.include({
                     
                     try {
                         console.log('📤 Enviando token al backend...');
-                        // Enviar token al backend de Odoo
                         const result = await rpc('/payment/culqi/confirm', {
                             provider_id: providerId,
                             token: window.Culqi.token.id,
@@ -173,7 +158,6 @@ paymentForm.include({
                         
                         console.log('✅ Respuesta del backend:', result);
                         
-                        // Redirigir según respuesta
                         if (result.redirect_url) {
                             console.log('↗️ Redirigiendo a:', result.redirect_url);
                             window.location = result.redirect_url;
@@ -184,47 +168,49 @@ paymentForm.include({
                         
                     } catch (error) {
                         console.error('❌ Error procesando pago:', error);
-                        if (error instanceof RPCError) {
-                            this._displayErrorDialog(_t("Error procesando el pago"), error.data.message);
-                        } else {
-                            this._displayErrorDialog(_t("Error"), _t("Error inesperado procesando el pago"));
-                        }
+                        alert('Error procesando el pago: ' + (error.data?.message || error.message));
                     }
                     
                 } else if (window.Culqi.order) {
-                    // Order creado para métodos alternativos (PagoEfectivo, etc.)
-                    console.log('📋 Order creado para método alternativo:', window.Culqi.order);
+                    console.log('📋 Order creado para método alternativo');
                     
                     try {
-                        console.log('📤 Enviando order al backend...');
                         const result = await rpc('/payment/culqi/confirm_order', {
                             provider_id: providerId,
                             order: window.Culqi.order,
                             reference: this.txReference,
                         });
                         
-                        console.log('✅ Respuesta del backend para order:', result);
-                        
                         if (result.redirect_url) {
-                            console.log('↗️ Redirigiendo a:', result.redirect_url);
                             window.location = result.redirect_url;
                         }
                         
                     } catch (error) {
                         console.error('❌ Error procesando order:', error);
-                        this._displayErrorDialog(_t("Error"), _t("Error procesando la orden de pago"));
+                        alert('Error procesando la orden de pago');
                     }
-                    
-                } else {
-                    // Error en Culqi
-                    console.error('❌ Error en Culqi:', window.Culqi.error);
-                    this._displayErrorDialog(_t("Error de pago"), _t("Culqi rechazó el pago: ") + JSON.stringify(window.Culqi.error));
                 }
             };
 
-            console.log('✅ Función callback configurada');
+            // Función global para manejar errores de Culqi
+            window.culqiError = function() {
+                console.error('❌ Error en Culqi:', window.Culqi.error);
+                
+                let errorMessage = 'Error en el proceso de pago';
+                
+                if (window.Culqi.error && window.Culqi.error.merchant_message) {
+                    errorMessage = window.Culqi.error.merchant_message;
+                } else if (window.Culqi.error && window.Culqi.error.user_message) {
+                    errorMessage = window.Culqi.error.user_message;
+                }
+                
+                console.log('📝 Mostrando error al usuario:', errorMessage);
+                alert('Error: ' + errorMessage);
+            };
 
-            // Mostrar botón de pago
+            console.log('✅ Funciones callback configuradas');
+
+            // Crear botón de pago
             const culqiBtnContainer = document.getElementById('o_culqi_checkout_placeholder');
             if (culqiBtnContainer) {
                 culqiBtnContainer.innerHTML = '';
@@ -245,12 +231,12 @@ paymentForm.include({
             document.getElementById('o_culqi_loading')?.classList.add('d-none');
             document.getElementById('o_culqi_button_container')?.classList.remove('d-none');
 
-            console.log('🎉 Configuración de Culqi completada exitosamente');
+            console.log('🎉 Configuración de Culqi v4 completada exitosamente');
 
         } catch (error) {
             console.error('❌ Error configurando Culqi:', error);
             document.getElementById('o_culqi_loading')?.classList.add('d-none');
-            this._displayErrorDialog(_t("Error de configuración"), error.message);
+            alert('Error de configuración: ' + error.message);
             return;
         }
     },
