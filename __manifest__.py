@@ -114,7 +114,7 @@ robusta, segura y completamente integrada con Odoo.
         'security/ir.model.access.csv',
 
         # Datos iniciales
-        'data/payment_provider_data.xml',
+        #'data/payment_provider_data.xml',
 
         # Vistas principales
         'views/payment_provider_views.xml',
