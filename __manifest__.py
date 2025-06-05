@@ -1,25 +1,22 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
+# -*- coding: utf-8 -*-
 {
     'name': 'Payment Provider: Culqi',
     'version': '1.0',
     'category': 'Accounting/Payment Providers',
     'sequence': 351,
-    'summary': "Culqi Payment Integration for Peru: tarjetas, Yape, PagoEfectivo y más",
-    'description': "Integración de Culqi con Odoo 18 para pagos con tarjeta, billeteras, QR y más.",
+    'summary': "Proveedor de pago Culqi para Perú",
+    'description': " ",  # No debe estar vacío para evitar cargar README.md
     'depends': ['payment'],
     'data': [
-        'views/payment_form_templates.xml',
         'views/payment_provider_views.xml',
-        'views/payment_transaction_views.xml',
+        'views/payment_culqi_templates.xml',
         'data/payment_provider_data.xml',
     ],
+    'post_init_hook': 'post_init_hook',  # 🔁 Aquí se invoca el hook al instalar
     'assets': {
         'web.assets_frontend': [
             'payment_culqi/static/src/**/*',
         ],
     },
     'license': 'LGPL-3',
-    'installable': True,
-    'application': False,
 }
