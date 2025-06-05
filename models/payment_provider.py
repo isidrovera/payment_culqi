@@ -16,7 +16,11 @@ _logger = logging.getLogger(__name__)
 class PaymentProvider(models.Model):
     _inherit = 'payment.provider'
 
-    # NO DEFINIR EL CAMPO CODE - ya existe en el modelo padre
+    # Definir el código del proveedor
+    code = fields.Selection(
+        selection_add=[('culqi', 'Culqi')], 
+        ondelete={'culqi': 'set default'}
+    )
     
     # Credenciales de Culqi
     culqi_public_key = fields.Char(
