@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="payment.payment_provider_form"/>
         <field name="arch" type="xml">
             <group name="provider_credentials" position="inside">
-                <group attrs="{'invisible': [('code', '!=', 'culqi')]}">
+                <group invisible="code != 'culqi'">
                     <field name="culqi_public_key" required="1"/>
                     <field name="culqi_secret_key" password="True" required="1"/>
                     <field name="culqi_rsa_id"/>
