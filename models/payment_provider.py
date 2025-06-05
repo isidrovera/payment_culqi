@@ -101,7 +101,7 @@ class PaymentProvider(models.Model):
         """Probar conexión con Culqi con mejor manejo de respuestas"""
         self.ensure_one()
         if self.code != 'culqi':
-            return
+            raise UserError(_("Este método solo funciona para proveedores Culqi"))
 
         if not self.culqi_secret_key:
             raise UserError(_("❌ Falta configurar la clave secreta de Culqi"))
@@ -111,47 +111,33 @@ class PaymentProvider(models.Model):
             'Content-Type': 'application/json',
         }
 
-        # Probar con endpoint de órdenes
-        url = 'https://api.culqi.com/v2/orders'
+        # Probar con endpoint más básico
+        url = 'https://api.culqi.com/v2/charges'
 
         try:
+            _logger.info(f"Probando conexión con Culqi usando clave: {self.culqi_secret_key[:10]}...")
+            
             response = requests.get(url, headers=headers, timeout=10)
+            _logger.info(f"Respuesta de Culqi: {response.status_code} - {response.text[:200]}")
             
             if response.status_code == 200:
-                # Conexión exitosa
-                message = "✅ Conexión exitosa con Culqi"
-                msg_type = 'success'
+                raise UserError(_("✅ Conexión exitosa con Culqi"))
             elif response.status_code == 401:
-                # Error de autenticación - clave incorrecta
-                message = "❌ Clave secreta de Culqi incorrecta"
-                msg_type = 'danger'
+                raise UserError(_("❌ Clave secreta de Culqi incorrecta"))
             elif response.status_code == 403:
-                # Acceso denegado - pero la clave es válida
-                message = "✅ Clave secreta válida (acceso restringido al endpoint)"
-                msg_type = 'success'
+                raise UserError(_("✅ Clave secreta válida (acceso restringido)"))
             else:
-                # Otro error
-                message = f"⚠️ Culqi respondió con código {response.status_code}"
-                msg_type = 'warning'
+                raise UserError(_("⚠️ Culqi respondió con código %s:\n%s") % (response.status_code, response.text))
                 
-        except requests.exceptions.ConnectionError:
-            message = "❌ No se pudo conectar con Culqi. Verificar conexión a internet"
-            msg_type = 'danger'
-        except requests.exceptions.Timeout:
-            message = "❌ Tiempo de espera agotado conectando con Culqi"
-            msg_type = 'danger'
+        except requests.exceptions.ConnectionError as e:
+            _logger.error(f"Error de conexión: {e}")
+            raise UserError(_("❌ No se pudo conectar con Culqi. Verificar conexión a internet"))
+        except requests.exceptions.Timeout as e:
+            _logger.error(f"Timeout: {e}")
+            raise UserError(_("❌ Tiempo de espera agotado conectando con Culqi"))
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error de requests: {e}")
+            raise UserError(_("❌ Error de red: %s") % str(e))
         except Exception as e:
-            message = f"❌ Error inesperado: {str(e)}"
-            msg_type = 'danger'
-
-        # Mostrar notificación en lugar de UserError
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'Prueba de Conexión Culqi',
-                'message': message,
-                'type': msg_type,
-                'sticky': False,
-            }
-        }
+            _logger.error(f"Error inesperado: {e}")
+            raise UserError(_("❌ Error inesperado: %s") % str(e))
