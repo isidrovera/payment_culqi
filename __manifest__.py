@@ -1,187 +1,142 @@
-# -*- coding: utf-8 -*-
+# Copyright 2025 Tu Empresa
+# License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
+
 {
-    'name': 'Culqi Payment Gateway - Integración Completa',
+    'name': 'Culqi Payment Gateway',
     'version': '18.0.1.0.0',
     'category': 'Accounting/Payment Providers',
-    'summary': 'Integración completa con la pasarela de pagos Culqi para Perú',
+    'sequence': 1450,
+    'summary': 'Integración completa con Culqi para pagos, suscripciones y más',
     'description': """
-Culqi Payment Gateway - Integración Completa para Odoo 18
-========================================================
+Culqi Payment Gateway para Odoo 18
+==================================
 
-Este módulo proporciona una integración completa con la pasarela de pagos Culqi,
-el procesador de pagos líder en Perú, ofreciendo una solución robusta y segura
-para comercios electrónicos y empresas.
+Integración completa con la pasarela de pagos Culqi que incluye:
 
-Características Principales:
-----------------------------
+Funcionalidades principales:
+---------------------------
+* Pagos de facturas y órdenes de venta
+* Pagos en tienda virtual (eCommerce)
+* Gestión de suscripciones y cobros recurrentes
+* Tokenización y almacenamiento seguro de tarjetas
+* Devoluciones parciales y totales
+* Portal del cliente para gestionar métodos de pago
+* Webhooks para sincronización automática
+* Encriptación RSA para mayor seguridad
 
-🚀 **Integración API Completa**
-• API v2.0 de Culqi con soporte completo  
-• Manejo de tokens seguros  
-• Webhooks para notificaciones automáticas  
-• Verificación de firmas para seguridad  
-
-💳 **Múltiples Medios de Pago**
-• Tarjetas de crédito/débito (Visa, Mastercard, Diners, Amex)  
-• Yape - Billetera digital del BCP  
-• PagoEfectivo - Red de agentes en efectivo  
-• Cuotéalo - Financiamiento sin tarjeta  
-
-🎨 **Modos de Integración Flexibles**
-• Formulario embebido en su sitio  
-• Popup/Modal para una experiencia fluida  
-• Redirección externa cuando sea necesario  
-
-🔒 **Seguridad Avanzada**
-• Encriptación RSA para datos sensibles  
-• Cumplimiento PCI DSS nivel 1  
-• Tokenización de tarjetas  
-• Validación de webhooks con firmas  
-
-💰 **Gestión Financiera Completa**
-• Procesamiento automático de pagos  
-• Reembolsos parciales y totales  
-• Reconciliación automática con facturas  
-• Integración con journals contables de Odoo  
-• Manejo de comisiones y montos netos  
-
-📊 **Panel Administrativo Avanzado**
-• Dashboard con métricas de pagos  
-• Filtros y búsquedas especializadas  
-• Reportes detallados por método de pago  
-• Trazabilidad completa de transacciones  
-
-🌐 **Experiencia de Usuario Optimizada**
-• Interfaz responsive para móviles  
-• Formateo automático de campos  
-• Validación en tiempo real  
-• Mensajes de estado claros  
-• Soporte para múltiples idiomas  
-
-⚙️ **Características Técnicas**
-• Compatible con Odoo 18.0+  
-• Soporte para ambientes de prueba y producción  
-• Logging detallado para debugging  
-• Manejo robusto de errores  
-• Tests automatizados incluidos  
-
-📱 **Casos de Uso**
-• E-commerce (Website Sale)  
-• Facturación electrónica  
-• Suscripciones y pagos recurrentes  
-• Point of Sale (POS)  
-• Marketplace y multi-vendor  
-
-🇵🇪 **Específico para Perú**
-• Integración con SUNAT  
-• Soporte para moneda PEN y USD  
-• Cumplimiento normativo local  
-• Documentación en español  
-
-Instalación y Configuración:
-----------------------------
-1. Instalar el módulo desde Apps  
-2. Configurar credenciales de Culqi (llaves pública y secreta)  
-3. Activar métodos de pago deseados  
-4. Configurar webhooks en panel Culqi  
-5. ¡Listo para procesar pagos!  
-
-Soporte y Documentación:
+Características técnicas:
 ------------------------
-• Documentación completa incluida  
-• Ejemplos de integración  
-• Guías de troubleshooting  
-• Soporte técnico disponible  
+* Cumplimiento PCI DSS
+* Ambiente de pruebas y producción
+* Logs detallados de transacciones
+* Reportes y analíticas
+* API REST completa
+* Soporte para múltiples monedas
 
-Este módulo está diseñado para empresas que buscan una solución de pagos
-robusta, segura y completamente integrada con Odoo.
-""",
+Países soportados:
+-----------------
+* Perú (PEN)
+* Chile (CLP) 
+* México (MXN)
+* Colombia (COP)
 
+Compatibilidad:
+--------------
+* Odoo 18.0+
+* Python 3.8+
+* Culqi API v2
+
+Para más información visita: https://docs.culqi.com
+    """,
     'author': 'Tu Empresa',
-    'website': 'https://www.tuempresa.com',
+    'website': 'https://tuempresa.com',
     'license': 'LGPL-3',
-    'support': 'soporte@tuempresa.com',
-
     'depends': [
-        'payment',
+        # Core Odoo modules
+        'base',
         'account',
+        'payment',
+        'sale',
+        'website',
         'website_sale',
-        'base_automation',
+        'portal',
+        
+        # Optional but recommended
+        'account_payment',
+        'sale_management',
+        'website_payment',
     ],
-
+    'external_dependencies': {
+        'python': [
+            'culqi',
+            'pycryptodome',
+            'jsonschema',
+            'python-dotenv',
+        ],
+    },
     'data': [
-        # Seguridad
+        # Security
+        'security/security.xml',
         'security/ir.model.access.csv',
-
-        # Datos iniciales
-        #'data/payment_provider_data.xml',
-
-        # Vistas principales
+        
+        # Data files
+        'data/payment_provider_data.xml',
+        'data/culqi_data.xml',
+        
+        # Views - Provider and Transaction
         'views/payment_provider_views.xml',
         'views/payment_transaction_views.xml',
         
-
-        # Vistas contables
-        'views/account_move_views.xml',
-        'views/account_payment_register_views.xml',
-
-        # Templates web
-        'views/payment_culqi_templates.xml',
-
+        # Views - Culqi Models
+        'views/culqi_customer_views.xml',
+        'views/culqi_card_views.xml',
+        'views/culqi_plan_views.xml',
+        'views/culqi_subscription_views.xml',
+        'views/culqi_refund_views.xml',
         
+        # Views - Extended Models
+        'views/account_move_views.xml',
+        
+        # Templates
+        'templates/culqi_form.xml',
+        'templates/culqi_checkout.xml',
+        'templates/culqi_portal.xml',
+        'views/portal_templates.xml',
     ],
-
     'assets': {
         'web.assets_frontend': [
-            'payment_culqi/static/src/js/payment_form_complete.js',
-            'payment_culqi/static/src/css/payment_form.css',
+            'payment_culqi/static/src/css/culqi_style.css',
+            'payment_culqi/static/src/js/culqi_form.js',
+            'payment_culqi/static/src/js/culqi_checkout.js',
         ],
         'web.assets_backend': [
-            'payment_culqi/static/src/js/payment_form_complete.js',
-            'payment_culqi/static/src/css/payment_form.css',
+            'payment_culqi/static/src/css/culqi_style.css',
+        ],
+        'portal.assets_frontend': [
+            'payment_culqi/static/src/js/culqi_portal.js',
+            'payment_culqi/static/src/css/culqi_style.css',
         ],
     },
-
     'demo': [
-        'demo/payment_demo_data.xml',
+        'demo/payment_demo.xml',
+        'demo/culqi_demo.xml',
     ],
-
-    'installable': True,
-    'auto_install': False,
-    'application': True,
-    
-    
-
     'images': [
         'static/description/banner.png',
         'static/description/icon.png',
-        'static/description/screenshot_1.png',
-        'static/description/screenshot_2.png',
-        'static/description/screenshot_3.png',
+        'static/description/culqi_logo.png',
     ],
-
-    'external_dependencies': {
-        'python': [
-            'requests',
-            'cryptography',
-        ],
-    },
-
-    # Información del módulo
-    'price': 299.0,
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+    'post_init_hook': 'post_init_hook',
+    'uninstall_hook': 'uninstall_hook',
+    'price': 299.00,
     'currency': 'USD',
-    'live_test_url': 'https://demo.culqi.com',
-
-    # Clasificación
-    'sequence': 10,
-    'maintainers': ['tu_usuario_github'],
-
-    # Compatibilidad
-    'odoo_version': '18.0',
-    'python_requires': '>=3.8',
-
-    # Enlaces útiles
-    'documentation_url': 'https://docs.culqi.com',
-    'repository_url': 'https://github.com/tu_usuario/payment_culqi',
-    'issues_url': 'https://github.com/tu_usuario/payment_culqi/issues',
+    'support': 'support@tuempresa.com',
+    'maintainers': ['tu_usuario'],
+    'development_status': 'Production/Stable',
+    'contributors': [
+        'Tu Nombre <tu@email.com>',
+    ],
 }

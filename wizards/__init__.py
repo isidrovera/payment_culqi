@@ -1,6 +1,6 @@
 # ============================================================================
-# controllers/__init__.py
+# wizards/__init__.py
 # ============================================================================
 
-from . import main
-from . import portal
+from . import culqi_refund_wizard
+from . import culqi_subscription_wizard
