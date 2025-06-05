@@ -5,7 +5,7 @@
         <field name="name">Culqi</field>
         <field name="code">culqi</field>
         <field name="state">disabled</field>
-        <field name="company_id" eval="False"/>
+        <field name="company_id" ref="base.main_company"/>
     </record>
 
 </odoo>
