@@ -16,10 +16,7 @@ _logger = logging.getLogger(__name__)
 class PaymentProvider(models.Model):
     _inherit = 'payment.provider'
 
-    code = fields.Selection(
-        selection_add=[('culqi', 'Culqi')], 
-        ondelete={'culqi': 'set default'}
-    )
+    code = fields.Selection(selection_add=[('culqi', 'Culqi')])
     
     # Credenciales de Culqi
     culqi_public_key = fields.Char(
