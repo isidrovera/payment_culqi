@@ -1,6 +1,5 @@
 <odoo noupdate="1">
-
-    <!-- Proveedor -->
+    <!-- Proveedor de pago Culqi -->
     <record id="payment_provider_culqi" model="payment.provider">
         <field name="name">Culqi</field>
         <field name="code">culqi</field>
@@ -8,15 +7,13 @@
         <field name="company_id" ref="base.main_company"/>
     </record>
 
-    <!-- Método Culqi Tarjeta -->
+    <!-- Método de pago Culqi (SIN el campo payment_flow) -->
     <record id="payment_method_culqi_card" model="payment.method">
-    <field name="name">Culqi (Tarjeta)</field>
-    <field name="code">culqi_card</field>
-    <field name="payment_flow">direct</field>
-    <field name="available_on">portal</field>
-    <field name="provider_id" ref="payment_provider_culqi"/>
-    <field name="state">enabled</field>
-</record>
-
-
+        <field name="name">Culqi (Tarjeta)</field>
+        <field name="code">culqi_card</field>
+        <!-- <field name="payment_flow">direct</field> --> <!-- ELIMINAR ESTA LÍNEA -->
+        <field name="available_on">portal</field>
+        <field name="provider_id" ref="payment_provider_culqi"/>
+        <field name="state">enabled</field>
+    </record>
 </odoo>
