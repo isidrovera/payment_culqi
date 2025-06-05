@@ -232,10 +232,12 @@ class PaymentProvider(models.Model):
 
     def _get_supported_currencies(self):
         """Retorna las monedas soportadas por Culqi"""
-        culqi_currencies = super()._get_supported_currencies()
+        supported_currencies = super()._get_supported_currencies()
         if self.code == 'culqi':
-            culqi_currencies = ['PEN', 'USD']
-        return culqi_currencies
+            # En Odoo 18, debe retornar un recordset de res.currency
+            currency_codes = ['PEN', 'USD']
+            supported_currencies = self.env['res.currency'].search([('name', 'in', currency_codes)])
+        return supported_currencies
 
     def _get_validation_amount(self):
         """Monto mínimo para validación"""
