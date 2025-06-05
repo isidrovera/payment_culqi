@@ -121,6 +121,7 @@ paymentForm.include({
             const options = {
                 lang: "auto",
                 installments: false, // Deshabilitamos cuotas por simplicidad
+                skipIIINsValidation: true, // Evitar validaciones CORS en testing
                 paymentMethods: {
                     tarjeta: true,
                     yape: true,
