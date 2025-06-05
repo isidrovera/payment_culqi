@@ -1,222 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    
-    <!-- Vista de formulario para registro de pago con Culqi -->
+
     <record id="account_payment_register_form_view_culqi" model="ir.ui.view">
         <field name="name">account.payment.register.form.view.culqi</field>
         <field name="model">account.payment.register</field>
         <field name="inherit_id" ref="account.view_account_payment_register_form" />
         <field name="arch" type="xml">
-            
-            <!-- Campos específicos de Culqi -->
             <field name="company_currency_id" position="after">
                 <field name="is_culqi_refund" invisible="1" />
                 <field name="culqi_transaction_id" invisible="1" />
-                
-                <!-- Alerta para reembolsos Culqi -->
-                <div class="alert alert-warning" role="alert" 
-                     invisible="not is_culqi_refund">
-                    <div class="d-flex align-items-center">
-                        <i class="fa fa-exclamation-triangle me-3 fa-2x"></i>
-                        <div class="flex-grow-1">
-                            <h6 class="alert-heading mb-2">
-                                <strong>Reembolso Culqi</strong>
-                            </h6>
-                            <p class="mb-2">
-                                Crear este pago procesará automáticamente el reembolso 
-                                en Culqi y reconciliará los montos correspondientes.
-                            </p>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <strong>Monto máximo disponible:</strong>
-                                </div>
-                                <div class="col-md-6">
-                                    <span class="badge bg-info">
-                                        <field name="max_culqi_amount" readonly="1" 
-                                               widget="monetary"/>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                <div class="alert alert-warning" role="alert" invisible="not is_culqi_refund">
+                    <b> Note: </b> Creating payment from here will refund the amount from culqi
+                    too. <div class="float-right"> Maximum Amount you can refund is <b>
+                            <field name="max_culqi_amount" readonly="1" />
+                        </b>
                     </div>
                 </div>
             </field>
-            
-            <!-- Información adicional del monto para reembolsos Culqi -->
-            <xpath expr="//field[@name='amount']" position="after">
-                <div invisible="not is_culqi_refund" class="mt-2">
-                    <small class="text-muted">
-                        <i class="fa fa-info-circle"></i>
-                        El reembolso se procesará automáticamente en Culqi al confirmar el pago.
-                    </small>
-                </div>
-            </xpath>
-            
         </field>
     </record>
 
-    <!-- Vista para pagos con información Culqi -->
     <record id="account_payment_form_view_culqi" model="ir.ui.view">
         <field name="name">account.payment.form.view.culqi</field>
         <field name="model">account.payment</field>
         <field name="inherit_id" ref="account.view_account_payment_form" />
         <field name="arch" type="xml">
-            
-            <!-- Información de Culqi después del partner_bank_id -->
             <field name="partner_bank_id" position="after">
-                
-                <!-- Referencia de reembolso Culqi -->
-                <field name="culqi_refund_reference" 
-                       invisible="not culqi_refund_reference"
-                       readonly="1"
-                       help="ID del reembolso en Culqi"/>
-                
-                <!-- ID del cargo Culqi -->
-                <field name="culqi_charge_id" 
-                       invisible="not culqi_charge_id"
-                       readonly="1"
-                       help="ID del cargo original en Culqi"/>
-                
-                <!-- Método de pago Culqi -->
-                <field name="culqi_payment_method_type" 
-                       invisible="not culqi_payment_method_type"
-                       readonly="1"/>
-                
+                <field name="culqi_refund_reference" invisible="not culqi_refund_reference" />
             </field>
-            
-            <!-- Botón para ver en Culqi -->
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_view_culqi_payment" 
-                        type="object" 
-                        class="oe_stat_button"
-                        icon="fa-external-link"
-                        invisible="not culqi_charge_id">
-                    <div class="o_field_widget o_stat_info">
-                        <span class="o_stat_text">Ver en Culqi</span>
-                    </div>
-                </button>
-            </xpath>
-            
-            <!-- Información adicional en una pestaña -->
-            <xpath expr="//notebook" position="inside">
-                <page string="Información Culqi" name="culqi_info"
-                      invisible="not culqi_charge_id">
-                    
-                    <group string="Detalles del Pago Culqi">
-                        <field name="culqi_charge_id" readonly="1"/>
-                        <field name="culqi_refund_reference" readonly="1"/>
-                        <field name="culqi_payment_method_type" readonly="1"/>
-                    </group>
-                    
-                    <!-- Información adicional si está disponible -->
-                    <group string="Estado del Reembolso" 
-                           invisible="not culqi_refund_reference">
-                        <label for="culqi_refund_reference" string="Estado:"/>
-                        <div>
-                            <span class="badge bg-success">
-                                <i class="fa fa-check"></i>
-                                Reembolsado en Culqi
-                            </span>
-                        </div>
-                    </group>
-                    
-                </page>
-            </xpath>
-            
-        </field>
-    </record>
-
-    <!-- Vista lista con información Culqi -->
-    <record id="account_payment_tree_view_culqi" model="ir.ui.view">
-        <field name="name">account.payment.tree.view.culqi</field>
-        <field name="model">account.payment</field>
-        <field name="inherit_id" ref="account.view_account_payment_tree"/>
-        <field name="arch" type="xml">
-            
-            <!-- Columna para método Culqi -->
-            <xpath expr="//field[@name='journal_id']" position="after">
-                <field name="culqi_payment_method_type" 
-                       optional="hide"
-                       string="Método Culqi"/>
-                <field name="culqi_refund_reference" 
-                       optional="hide"
-                       string="Ref. Reembolso"/>
-            </xpath>
-            
-        </field>
-    </record>
-
-    <!-- Filtros de búsqueda para pagos Culqi -->
-    <record id="account_payment_search_view_culqi" model="ir.ui.view">
-        <field name="name">account.payment.search.view.culqi</field>
-        <field name="model">account.payment</field>
-        <field name="inherit_id" ref="account.view_account_payment_search"/>
-        <field name="arch" type="xml">
-            
-            <xpath expr="//filter[@name='state_posted']" position="after">
-                <separator/>
-                
-                <!-- Filtros específicos de Culqi -->
-                <filter string="Pagos Culqi" name="culqi_payments"
-                        domain="[('culqi_charge_id', '!=', False)]"/>
-                        
-                <filter string="Reembolsos Culqi" name="culqi_refunds"
-                        domain="[('culqi_refund_reference', '!=', False)]"/>
-                        
-                <filter string="Tarjetas Culqi" name="culqi_cards"
-                        domain="[('culqi_payment_method_type', '=', 'card')]"/>
-                        
-                <filter string="Yape" name="culqi_yape"
-                        domain="[('culqi_payment_method_type', '=', 'yape')]"/>
-                        
-                <filter string="PagoEfectivo" name="culqi_pagoefectivo"
-                        domain="[('culqi_payment_method_type', '=', 'pagoefectivo')]"/>
-            </xpath>
-            
-            <!-- Agrupaciones por método Culqi -->
-            <xpath expr="//group" position="inside">
-                <filter string="Método Culqi" name="group_by_culqi_method"
-                        context="{'group_by': 'culqi_payment_method_type'}"/>
-            </xpath>
-            
-        </field>
-    </record>
-
-    <!-- Acción para pagos Culqi -->
-    <record id="action_account_payment_culqi" model="ir.actions.act_window">
-        <field name="name">Pagos Culqi</field>
-        <field name="res_model">account.payment</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('culqi_charge_id', '!=', False)]</field>
-        <field name="context">{
-            'search_default_culqi_payments': 1
-        }</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                ¡No hay pagos Culqi registrados todavía!
-            </p>
-            <p>
-                Los pagos procesados a través de Culqi aparecerán aquí automáticamente.
-            </p>
-        </field>
-    </record>
-
-    <!-- Acción para reembolsos Culqi -->
-    <record id="action_account_payment_culqi_refunds" model="ir.actions.act_window">
-        <field name="name">Reembolsos Culqi</field>
-        <field name="res_model">account.payment</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('culqi_refund_reference', '!=', False)]</field>
-        <field name="context">{
-            'search_default_culqi_refunds': 1
-        }</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                ¡No hay reembolsos Culqi procesados todavía!
-            </p>
-            <p>
-                Los reembolsos procesados a través de Culqi aparecerán aquí.
-            </p>
         </field>
     </record>
 
