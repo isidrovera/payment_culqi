@@ -149,7 +149,7 @@ robusta, segura y completamente integrada con Odoo.
     'installable': True,
     'auto_install': False,
     'application': True,
-    'post_init_hook': 'post_init_hook',
+    
     
 
     'images': [

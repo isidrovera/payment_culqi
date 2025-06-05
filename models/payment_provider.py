@@ -230,15 +230,6 @@ class PaymentProvider(models.Model):
         else:
             raise UserError(result['message'])
 
-    def _get_supported_currencies(self):
-        """Retorna las monedas soportadas por Culqi"""
-        supported_currencies = super()._get_supported_currencies()
-        if self.code == 'culqi':
-            # En Odoo 18, debe retornar un recordset de res.currency
-            currency_codes = ['PEN', 'USD']
-            supported_currencies = self.env['res.currency'].search([('name', 'in', currency_codes)])
-        return supported_currencies
-
     def _get_validation_amount(self):
         """Monto mínimo para validación"""
         res = super()._get_validation_amount()
@@ -259,22 +250,14 @@ class PaymentProvider(models.Model):
                 default_codes.append('cuotealo')
         return default_codes
 
-    @api.model
     def _get_all_culqi_methods_codes(self):
         """Retorna lista de códigos de métodos para Culqi"""
         return self.search([('code', '=', 'culqi')]).with_context(active_test=False).mapped('payment_method_ids.code')
 
-    @api.model
-    def _get_compatible_providers(self, *args, currency_id=None, **kwargs):
-        """Filtra proveedores compatibles según la moneda"""
-        providers = super()._get_compatible_providers(*args, currency_id=currency_id, **kwargs)
-        
-        if currency_id:
-            currency = self.env['res.currency'].browse(currency_id)
-            if currency.name not in ['PEN', 'USD']:
-                providers = providers.filtered(lambda p: p.code != 'culqi')
-        
-        return providers
+    def _api_culqi_refund(self, amount, currency, payment_reference):
+        """Crear reembolso en Culqi"""
+        refund_data = {'amount': int(amount * 100), 'reason': 'solicitud_comprador'}
+        return self._culqi_make_request(f'/refunds', data=refund_data, method="POST")
 
     def _culqi_verify_webhook_signature(self, payload, signature):
         """Verifica la firma del webhook de Culqi"""
