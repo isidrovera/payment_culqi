@@ -12,6 +12,10 @@
                     <field name="culqi_secret_key" password="True" required="1"/>
                     <field name="culqi_rsa_id"/>
                     <field name="culqi_rsa_public_key"/>
+                    <button name="action_culqi_check_connection"
+                    type="object"
+                    string="Probar Conexión Culqi"
+                    class="btn-secondary"/>
                     <widget
                         name="documentation_link"
                         path="https://docs.culqi.com/"

@@ -4,7 +4,7 @@ import logging
 import requests
 
 from odoo import _, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -75,3 +75,24 @@ class PaymentProvider(models.Model):
         if self.code == 'culqi':
             return supported.filtered(lambda c: c.name in ('PEN', 'USD'))
         return supported
+    def action_culqi_check_connection(self):
+        self.ensure_one()
+        if self.code != 'culqi':
+            return
+
+        headers = {
+            'Authorization': f'Bearer {self.culqi_secret_key}',
+            'Content-Type': 'application/json',
+        }
+
+        # Culqi recomienda probar con GET /v1/charges o /v1/orders
+        url = 'https://api.culqi.com/v2/orders'
+
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                raise UserError(_("✅ Conexión exitosa con Culqi."))
+            else:
+                raise UserError(_("❌ Culqi respondió con error:\n%s") % response.text)
+        except Exception as e:
+            raise UserError(_("❌ No se pudo conectar con Culqi:\n%s") % str(e))
