@@ -2,7 +2,7 @@
 <odoo>
     <!-- data/payment_provider_data.xml -->
     
-    <!-- Proveedor de Pago Culqi - Compatible con Odoo 18 -->
+    <!-- Proveedor de Pago Culqi - Versión Básica -->
     <record id="payment_provider_culqi" model="payment.provider">
         <field name="name">Culqi</field>
         <field name="code">culqi</field>
@@ -10,11 +10,13 @@
         <field name="state">disabled</field>
         <field name="is_published">false</field>
         <field name="company_id" ref="base.main_company"/>
+        
+        <!-- Campos básicos de soporte -->
         <field name="support_tokenization">false</field>
-        <!-- NO definir support_manual_capture aquí - será manejado por el método compute -->
         <field name="support_refund">partial</field>
         <field name="support_express_checkout">false</field>
-        <!-- Campos específicos de Culqi -->
+        
+        <!-- ✅ SOLO campos básicos de Culqi que existen en el modelo -->
         <field name="culqi_checkout_mode">embedded</field>
         <field name="culqi_enable_cards">true</field>
         <field name="culqi_enable_yape">true</field>
