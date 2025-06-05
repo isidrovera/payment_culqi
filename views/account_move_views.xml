@@ -18,15 +18,14 @@
                         name="action_register_refund_payment"
                         type="object"
                         class="btn-warning"
-                        invisible="not valid_for_culqi_refund"
-                        help="Procesar reembolso a través de Culqi"/>
+                        invisible="not valid_for_culqi_refund"/>
 
                 <!-- Botón para pagar con Culqi -->
                 <button string="Pagar con Culqi"
-        name="action_culqi_pay_invoice"
-        type="object"
-        class="btn-primary"
-        invisible="not show_button_culqi"/>
+                        name="action_culqi_pay_invoice"
+                        type="object"
+                        class="btn-primary"
+                        invisible="not show_button_culqi"/>
 
             </header>
 
@@ -70,20 +69,14 @@
                     </group>
 
                     <group string="Resumen de Pagos Culqi" col="4">
-                        <label string="Total pagado con Culqi:"/>
-                        <div>
+                        <div class="o_field_widget">
+                            <label string="Total pagado con Culqi:"/>
                             <field name="culqi_total_paid" readonly="1"/>
-                            <span class="text-success fw-bold">
-                                <t t-esc="culqi_total_paid"/> <t t-esc="currency_id.symbol"/>
-                            </span>
                         </div>
 
-                        <label string="Comisiones Culqi:"/>
-                        <div>
+                        <div class="o_field_widget">
+                            <label string="Comisiones Culqi:"/>
                             <field name="culqi_total_fee" readonly="1"/>
-                            <span class="text-muted">
-                                <t t-esc="culqi_total_fee"/> <t t-esc="currency_id.symbol"/>
-                            </span>
                         </div>
                     </group>
 
