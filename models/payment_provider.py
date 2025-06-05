@@ -129,6 +129,9 @@ class PaymentProvider(models.Model):
             else:
                 raise UserError(_("⚠️ Culqi respondió con código %s:\n%s") % (response.status_code, response.text))
                 
+        except UserError:
+            # Re-lanzar UserErrors sin modificar
+            raise
         except requests.exceptions.ConnectionError as e:
             _logger.error(f"Error de conexión: {e}")
             raise UserError(_("❌ No se pudo conectar con Culqi. Verificar conexión a internet"))
