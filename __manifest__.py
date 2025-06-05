@@ -128,8 +128,7 @@ robusta, segura y completamente integrada con Odoo.
         # Templates web
         'views/payment_culqi_templates.xml',
 
-        # Menús y acciones
-        'views/culqi_menus.xml',
+        
     ],
 
     'assets': {
