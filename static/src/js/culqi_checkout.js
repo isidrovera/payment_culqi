@@ -22,7 +22,7 @@ paymentForm.include({
         try {
             // Validar datos de configuración
             const rawData = radio.dataset.culqiInlineFormValues;
-            console.log('📋 Raw data:', rawData);
+            console.log('📋 Raw data: [DATOS OCULTOS POR SEGURIDAD]');
             
             if (!rawData || rawData.trim() === '') {
                 throw new Error('No hay datos de configuración para Culqi');
@@ -33,8 +33,8 @@ paymentForm.include({
                 inlineFormValues = JSON.parse(rawData);
                 console.log('✅ Datos parseados correctamente:', {
                     provider_id: inlineFormValues.provider_id,
-                    public_key: inlineFormValues.public_key ? `${inlineFormValues.public_key.substring(0, 8)}***` : 'NO DEFINIDA',
-                    rsa_id: inlineFormValues.rsa_id ? `${inlineFormValues.rsa_id.substring(0, 8)}***` : 'NO DEFINIDA',
+                    public_key: inlineFormValues.public_key ? 'pk_***' : 'NO DEFINIDA',
+                    rsa_id: inlineFormValues.rsa_id ? 'rsa_***' : 'NO DEFINIDA',
                     logo_url: inlineFormValues.logo_url || 'Sin logo',
                     banner_color: inlineFormValues.banner_color,
                     button_color: inlineFormValues.button_color
@@ -90,7 +90,7 @@ paymentForm.include({
 
             // Configurar Culqi según documentación oficial
             window.Culqi.publicKey = culqiPublicKey;
-            console.log('🔑 Clave pública configurada:', `${culqiPublicKey.substring(0, 12)}***`);
+            console.log('🔑 Clave pública configurada: pk_***');
             
             // Configurar settings (obligatorio según documentación)
             const settings = {
@@ -103,7 +103,7 @@ paymentForm.include({
             if (inlineFormValues.rsa_id && inlineFormValues.rsa_public_key) {
                 settings.xculqirsaid = inlineFormValues.rsa_id;
                 settings.rsapublickey = inlineFormValues.rsa_public_key;
-                console.log('🔐 Cifrado RSA configurado:', `${inlineFormValues.rsa_id.substring(0, 8)}***`);
+                console.log('🔐 Cifrado RSA configurado: rsa_***');
             } else {
                 console.log('ℹ️ Sin cifrado RSA configurado');
             }
@@ -152,13 +152,13 @@ paymentForm.include({
                 
                 if (window.Culqi.token) {
                     // Token creado exitosamente
-                    console.log('✅ Token creado exitosamente:', `${window.Culqi.token.id.substring(0, 12)}***`);
+                    console.log('✅ Token creado exitosamente: tkn_***');
                     console.log('📄 Datos del token:', {
-                        id: `${window.Culqi.token.id.substring(0, 12)}***`,
-                        email: window.Culqi.token.email,
-                        card_number: window.Culqi.token.card_number,
-                        last_four: window.Culqi.token.last_four,
-                        card_brand: window.Culqi.token.card_brand
+                        id: 'tkn_***',
+                        email: window.Culqi.token.email || 'No email',
+                        card_number: window.Culqi.token.card_number || 'No card',
+                        last_four: window.Culqi.token.last_four || 'N/A',
+                        card_brand: window.Culqi.token.card_brand || 'N/A'
                     });
                     
                     try {
