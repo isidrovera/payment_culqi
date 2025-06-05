@@ -1,70 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
-        <!-- Vista de formulario para transacciones Culqi -->
-        <record id="payment_transaction_form_culqi" model="ir.ui.view">
-            <field name="name">payment.transaction.form.culqi</field>
-            <field name="model">payment.transaction</field>
-            <field name="inherit_id" ref="payment.payment_transaction_form"/>
-            <field name="arch" type="xml">
-                
-                <!-- Agregar campos básicos de Culqi -->
-                <xpath expr="//field[@name='provider_reference']" position="after">
-                    <field name="culqi_token_id" readonly="1" invisible="provider_code != 'culqi'"/>
-                    <field name="culqi_charge_id" readonly="1" invisible="provider_code != 'culqi'"/>
-                    <field name="culqi_payment_method" readonly="1" invisible="provider_code != 'culqi'"/>
-                </xpath>
 
-                <!-- Agregar información financiera -->
-                <xpath expr="//field[@name='amount']" position="after">
-                    <field name="culqi_fee" readonly="1" invisible="provider_code != 'culqi' or not culqi_fee"/>
-                </xpath>
+    <!-- Vista de formulario para transacciones Culqi -->
+    <record id="payment_transaction_form_culqi" model="ir.ui.view">
+        <field name="name">payment.transaction.form.culqi</field>
+        <field name="model">payment.transaction</field>
+        <field name="inherit_id" ref="payment.payment_transaction_form"/>
+        <field name="arch" type="xml">
 
-                <!-- Agregar grupo de información Culqi -->
-                <xpath expr="//group[@name='payment_info']" position="after">
-                    <group string="Información Culqi" invisible="provider_code != 'culqi'">
-                        <group>
-                            <field name="culqi_token_id" readonly="1"/>
-                            <field name="culqi_charge_id" readonly="1"/>
-                        </group>
-                        <group>
-                            <field name="culqi_payment_method" readonly="1"/>
-                            <field name="culqi_fee" readonly="1"/>
-                        </group>
+            <!-- Datos principales de Culqi -->
+            <xpath expr="//field[@name='provider_reference']" position="after">
+                <field name="culqi_charge_id" readonly="1" invisible="provider_code != 'culqi'"/>
+                <field name="culqi_token_id" readonly="1" invisible="provider_code != 'culqi'"/>
+            </xpath>
+
+            <xpath expr="//field[@name='payment_method_id']" position="after">
+                <field name="culqi_payment_method" readonly="1" invisible="provider_code != 'culqi'"/>
+                <!-- ❌ COMENTADOS: campos que no existen en modelo simplificado
+                <field name="culqi_card_brand" readonly="1" invisible="provider_code != 'culqi'"/>
+                <field name="culqi_card_last_four" readonly="1" invisible="provider_code != 'culqi'"/>
+                -->
+
+                <!-- Información agrupada - SOLO campos que existen -->
+                <group string="Información Culqi" invisible="provider_code != 'culqi'">
+
+                    <!-- ❌ COMENTADO: grupo PagoEfectivo - campos no existen
+                    <group string="PagoEfectivo" invisible="culqi_payment_method != 'pagoefectivo'">
+                        <field name="culqi_pagoefectivo_cip" readonly="1"/>
+                        <field name="culqi_pagoefectivo_expiration" readonly="1"/>
                     </group>
-                </xpath>
 
-                <!-- Botón simple para ver en Culqi (sin action que no existe) -->
-                <xpath expr="//header" position="inside">
-                    <button name="%(payment_culqi.action_view_culqi_panel)d" 
-                            type="action" 
-                            string="Ver en Culqi" 
-                            class="btn-primary"
-                            invisible="provider_code != 'culqi' or not culqi_charge_id"/>
-                </xpath>
+                    <group string="Financiamiento Cuotéalo">
+                        <field name="culqi_installments" readonly="1" invisible="culqi_payment_method != 'cuotealo'"/>
+                    </group>
+                    -->
 
-            </field>
-        </record>
+                    <group string="Finanzas">
+                        <field name="culqi_fee" readonly="1"/>
+                        <!-- ❌ COMENTADO: campo que no existe
+                        <field name="culqi_net_amount" readonly="1"/>
+                        -->
+                    </group>
 
-        <!-- Acción simple para abrir panel Culqi -->
-        <record id="action_view_culqi_panel" model="ir.actions.act_url">
-            <field name="name">Ver en Panel Culqi</field>
-            <field name="url">https://panel.culqi.com/transactions</field>
-            <field name="target">new</field>
-        </record>
+                    <!-- ❌ COMENTADO: grupo técnico - campos no existen
+                    <group string="Información Técnica" groups="base.group_no_one">
+                        <field name="culqi_creation_date" readonly="1"/>
+                        <field name="culqi_outcome_type" readonly="1"/>
+                        <field name="culqi_outcome_code" readonly="1"/>
+                        <field name="culqi_email" readonly="1"/>
+                        <field name="culqi_device_fingerprint" readonly="1"/>
+                    </group>
+                    -->
 
-        <!-- Vista de lista simplificada -->
-        <record id="payment_transaction_tree_culqi" model="ir.ui.view">
-            <field name="name">payment.transaction.tree.culqi</field>
-            <field name="model">payment.transaction</field>
-            <field name="inherit_id" ref="payment.payment_transaction_tree"/>
-            <field name="arch" type="xml">
-                <xpath expr="//field[@name='amount']" position="after">
-                    <field name="culqi_payment_method" optional="hide"/>
-                    <field name="culqi_fee" optional="hide"/>
-                </xpath>
-            </field>
-        </record>
+                </group>
+            </xpath>
 
-    </data>
+            <!-- ❌ COMENTADO: Botón que no tiene método en Python
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_culqi_transaction"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-external-link"
+                        invisible="provider_code != 'culqi'">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Ver en Culqi</span>
+                    </div>
+                </button>
+            </xpath>
+            -->
+
+            <!-- Recordatorio de pago -->
+            <xpath expr="//field[@name='payment_id']" position="after">
+                <field name="culqi_reminder_payment_id" readonly="1" invisible="provider_code != 'culqi'"/>
+            </xpath>
+
+        </field>
+    </record>
+
 </odoo>
