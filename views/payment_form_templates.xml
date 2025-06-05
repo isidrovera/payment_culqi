@@ -6,22 +6,17 @@
        <xpath expr="//input[@name='o_payment_radio']" position="attributes">
             <attribute name="t-att-data-provider-code">provider_sudo.code</attribute>
             
-            <attribute name="t-att-data-culqi-inline-form-values">
-                <t t-if="provider_sudo and provider_sudo.code == 'culqi'">
-                    <t t-set="culqi_values" t-value="json.dumps({
-                        'provider_id': provider_sudo.id,
-                        'public_key': provider_sudo.culqi_public_key or '',
-                        'logo_url': provider_sudo.culqi_logo_url or '',
-                        'banner_color': provider_sudo.culqi_banner_color or '#0033A0',
-                        'button_color': provider_sudo.culqi_button_color or '#0033A0',
-                        'rsa_id': provider_sudo.culqi_rsa_id or '',
-                        'rsa_public_key': provider_sudo.culqi_rsa_public_key or '',
-                    })"/>
-                </t>
-                <t t-if="not (provider_sudo and provider_sudo.code == 'culqi')">
-                    <t t-set="culqi_values">{}</t>
-                </t>
-                <t t-esc="culqi_values"/>
+            <attribute name="t-att-data-culqi-inline-form-values" 
+                    t-if="provider_sudo and provider_sudo.code == 'culqi'">
+                <t t-esc="json.dumps({
+                    'provider_id': provider_sudo.id,
+                    'public_key': provider_sudo.culqi_public_key or '',
+                    'logo_url': provider_sudo.culqi_logo_url or '',
+                    'banner_color': provider_sudo.culqi_banner_color or '#0033A0',
+                    'button_color': provider_sudo.culqi_button_color or '#0033A0',
+                    'rsa_id': provider_sudo.culqi_rsa_id or '',
+                    'rsa_public_key': provider_sudo.culqi_rsa_public_key or '',
+                })"/>
             </attribute>
         </xpath>
     </template>
