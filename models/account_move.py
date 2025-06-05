@@ -20,7 +20,7 @@ class AccountMove(models.Model):
                 invoice.js_assign_outstanding_line(line.id)
         return posted
 
-    # Para procesar reembolsos desde notas de crédito
+    # Campos para procesar reembolsos desde notas de crédito
     valid_for_culqi_refund = fields.Boolean(compute="_compute_valid_for_culqi_refund")
     culqi_refund_reference = fields.Char(string="Culqi Refund Reference")
 
@@ -37,7 +37,7 @@ class AccountMove(models.Model):
                     "Por favor, reembolse manualmente desde el portal de Culqi"
                 ))
             
-            # Obtener datos del pago desde Culqi
+            # ✅ CORREGIDO: Usar provider_reference en lugar de culqi_charge_id
             payment_record = culqi_transactions.provider_id._culqi_make_request(
                 f'/charges/{culqi_transactions.provider_reference}', 
                 method='GET'
@@ -66,8 +66,6 @@ class AccountMove(models.Model):
         )
 
         # CASO 2: Para notas de crédito generadas debido a devoluciones de entrega
-        # Este módulo no tiene dependencias directas con el módulo de ventas.
-        # Verificamos campos en líneas de movimiento para comprobar si el pedido de venta está vinculado.
         if not transactions and 'sale_line_ids' in self.invoice_line_ids._fields:
             transactions = self.invoice_line_ids.mapped(
                 'sale_line_ids.order_id.transaction_ids'
@@ -84,10 +82,11 @@ class AccountMove(models.Model):
 
         payment_record, culqi_transactions = self._get_culqi_payment_data_for_refund()
         
-        # Verificar si hay monto disponible para reembolso
-        if payment_record and payment_record.get('amount_refunded_cents'):
-            total_amount_cents = payment_record.get('amount_cents', 0)
-            refunded_amount_cents = payment_record.get('amount_refunded_cents', 0)
+        # ✅ SIMPLIFICADO: Verificar disponibilidad de reembolso
+        if payment_record:
+            # Calcular monto disponible para reembolso
+            total_amount_cents = payment_record.get('amount', 0)
+            refunded_amount_cents = payment_record.get('amount_refunded', 0)
             remaining_amount_cents = total_amount_cents - refunded_amount_cents
             
             if remaining_amount_cents > 0:
@@ -110,6 +109,7 @@ class AccountMove(models.Model):
             'type': 'ir.actions.act_window',
         }
 
+    # ✅ MÉTODOS SIMPLIFICADOS para integración con facturas
     def _culqi_get_payment_url(self):
         """Genera URL de pago para esta factura"""
         self.ensure_one()
@@ -143,6 +143,7 @@ class AccountMove(models.Model):
             'target': 'self',
         }
     
+    # ✅ CAMPOS COMPUTADOS básicos para mostrar información Culqi
     show_button_culqi = fields.Boolean(compute="_compute_show_button_culqi")
     show_transaction_culqi_tab = fields.Boolean(compute="_compute_show_button_culqi")
     has_culqi_done = fields.Boolean(compute="_compute_show_button_culqi")
@@ -152,6 +153,7 @@ class AccountMove(models.Model):
 
     @api.depends('transaction_ids')
     def _compute_show_button_culqi(self):
+        """Computa visibilidad de botones Culqi"""
         for move in self:
             txs = move.transaction_ids.filtered(lambda t: t.provider_code == 'culqi')
             move.show_button_culqi = bool(txs)
@@ -161,6 +163,7 @@ class AccountMove(models.Model):
 
     @api.depends('transaction_ids')
     def _compute_culqi_summary(self):
+        """Computa resumen de pagos Culqi"""
         for move in self:
             txs = move.transaction_ids.filtered(lambda t: t.provider_code == 'culqi' and t.state == 'done')
             move.culqi_total_paid = sum(t.amount for t in txs)
