@@ -5,10 +5,8 @@
     <template id="payment_culqi.method_form" inherit_id="payment.method_form">
        <xpath expr="//input[@name='o_payment_radio']" position="attributes">
             <attribute name="t-att-data-provider-code">provider_sudo.code</attribute>
-            
-            <attribute name="t-att-data-culqi-inline-form-values" 
-                    t-if="provider_sudo and provider_sudo.code == 'culqi'">
-                <t t-esc="json.dumps({
+            <attribute name="t-att-data-culqi-inline-form-values">
+                provider_sudo.code == 'culqi' and json.dumps({
                     'provider_id': provider_sudo.id,
                     'public_key': provider_sudo.culqi_public_key or '',
                     'logo_url': provider_sudo.culqi_logo_url or '',
@@ -16,7 +14,7 @@
                     'button_color': provider_sudo.culqi_button_color or '#0033A0',
                     'rsa_id': provider_sudo.culqi_rsa_id or '',
                     'rsa_public_key': provider_sudo.culqi_rsa_public_key or '',
-                })"/>
+                }) or ''
             </attribute>
         </xpath>
     </template>
