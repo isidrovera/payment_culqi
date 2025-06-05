@@ -10,12 +10,13 @@
 
     <!-- Método Culqi Tarjeta -->
     <record id="payment_method_culqi_card" model="payment.method">
-        <field name="name">Culqi (Tarjeta)</field>
-        <field name="code">culqi_card</field>
-        <field name="payment_flow">direct</field>
-        <field name="available_on">portal</field>
-        <field name="provider_id" ref="payment_provider_culqi"/>
-        <field name="state">enabled</field>
-    </record>
+    <field name="name">Culqi (Tarjeta)</field>
+    <field name="code">culqi_card</field>
+    <field name="payment_flow">direct</field>
+    <field name="available_on">portal</field>
+    <field name="provider_id" ref="payment_provider_culqi"/>
+    <field name="state">enabled</field>
+</record>
+
 
 </odoo>
