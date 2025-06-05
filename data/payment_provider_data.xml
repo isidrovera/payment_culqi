@@ -8,10 +8,8 @@
         <field name="company_id" ref="base.main_company"/>
     </record>
 
-    <!-- Método de pago con la estructura correcta para tu versión de Odoo -->
-    <record id="payment_method_culqi_card" model="payment.method">
-        <field name="name">Culqi (Tarjeta)</field>
-        <field name="code">culqi_card</field>
+    <!-- Agregar Culqi al método de pago "Tarjeta" existente -->
+    <record id="payment_method_card" model="payment.method">
         <field name="provider_ids" eval="[(4, ref('payment_provider_culqi'))]"/>
     </record>
 </odoo>
