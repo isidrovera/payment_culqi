@@ -17,14 +17,12 @@
                 <button string="Reembolso Culqi"
                         name="action_register_refund_payment"
                         type="object"
-                        class="btn-warning"
                         invisible="not valid_for_culqi_refund"/>
 
                 <!-- Botón para pagar con Culqi -->
                 <button string="Pagar con Culqi"
                         name="action_culqi_pay_invoice"
                         type="object"
-                        class="btn-primary"
                         invisible="not show_button_culqi"/>
 
             </header>
@@ -32,15 +30,11 @@
             <!-- Campos adicionales después del journal -->
             <xpath expr="//div[@name='journal_div']" position="after">
                 <field name="culqi_refund_reference" invisible="1"/>
-
-                <div invisible="not culqi_refund_reference" class="alert alert-success" role="alert">
-                    <i class="fa fa-check-circle me-2"></i>
-                    <strong>Reembolso Culqi procesado:</strong>
-                    <field name="culqi_refund_reference" readonly="1" class="ms-2"/>
-                    <span class="badge bg-success ms-2">
-                        <i class="fa fa-money"></i> Monto reembolsado en Culqi
-                    </span>
-                </div>
+                <field name="culqi_refund_reference" groups="base.group_no_one" readonly="1" invisible="not culqi_refund_reference"/>
+                <span invisible="not culqi_refund_reference"> </span>
+                <span class="badge bg-success text-white" invisible="not culqi_refund_reference">
+                    <span class="fa fa-check"/> Monto reembolsado en Culqi
+                </span>
             </xpath>
 
             <!-- Información de transacciones Culqi -->
@@ -69,15 +63,8 @@
                     </group>
 
                     <group string="Resumen de Pagos Culqi" col="4">
-                        <div class="o_field_widget">
-                            <label string="Total pagado con Culqi:"/>
-                            <field name="culqi_total_paid" readonly="1"/>
-                        </div>
-
-                        <div class="o_field_widget">
-                            <label string="Comisiones Culqi:"/>
-                            <field name="culqi_total_fee" readonly="1"/>
-                        </div>
+                        <field name="culqi_total_paid" readonly="1" string="Total pagado con Culqi"/>
+                        <field name="culqi_total_fee" readonly="1" string="Comisiones Culqi"/>
                     </group>
 
                 </page>
