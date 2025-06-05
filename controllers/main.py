@@ -25,23 +25,80 @@ class CulqiController(http.Controller):
         :param int provider_id: ID del proveedor 'culqi' (payment.provider)
         :param str token: Token generado en el frontend (tarjeta, yape, etc.)
         :param str reference: Referencia de la transacción Odoo
-        :return: None
+        :return: dict con redirect_url
         """
-        provider = request.env['payment.provider'].browse(provider_id).sudo()
-        tx = None
+        try:
+            _logger.info("🚀 Confirmando pago Culqi - Provider: %s, Token: %s, Referencia: %s", 
+                        provider_id, token[:12] + '***' if token else 'None', reference)
+            
+            provider = request.env['payment.provider'].browse(provider_id).sudo()
+            if not provider or provider.code != 'culqi':
+                return {'success': False, 'error': 'Proveedor Culqi no encontrado'}
 
-        if reference:
-            tx = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
-                'culqi', {'metadata': {'tx_ref': reference}}
-            )
+            tx = None
 
-        processing_values = {
-            'culqi_token': token,
-        }
+            # Buscar transacción de múltiples maneras
+            if reference:
+                # Método 1: Búsqueda estándar
+                try:
+                    tx = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
+                        'culqi', {'metadata': {'tx_ref': reference}}
+                    )
+                except Exception as e:
+                    _logger.warning("⚠️ Búsqueda estándar falló: %s", e)
+                
+                # Método 2: Búsqueda directa por referencia
+                if not tx:
+                    tx = request.env['payment.transaction'].sudo().search([
+                        ('reference', '=', reference),
+                        ('provider_id', '=', provider_id)
+                    ], limit=1)
+                
+                # Método 3: Búsqueda por referencia que contenga parte del reference
+                if not tx and 'INV-' in reference:
+                    invoice_id = reference.split('-')[2] if len(reference.split('-')) > 2 else None
+                    if invoice_id:
+                        tx = request.env['payment.transaction'].sudo().search([
+                            ('reference', 'ilike', invoice_id),
+                            ('provider_id', '=', provider_id),
+                            ('state', 'in', ['draft', 'pending'])
+                        ], limit=1)
 
-        if tx:
+            # Método 4: Buscar transacción pendiente más reciente
+            if not tx:
+                _logger.info("🔍 Buscando transacción pendiente más reciente para proveedor %s", provider_id)
+                tx = request.env['payment.transaction'].sudo().search([
+                    ('provider_id', '=', provider_id),
+                    ('state', 'in', ['draft', 'pending']),
+                ], order='create_date desc', limit=1)
+
+            if not tx:
+                _logger.error("❌ No se encontró transacción válida")
+                return {'success': False, 'error': 'Transacción no encontrada'}
+
+            _logger.info("✅ Transacción encontrada: %s (ID: %s, Estado: %s)", tx.reference, tx.id, tx.state)
+
+            processing_values = {
+                'culqi_token': token,
+            }
+
+            # Procesar el pago
             tx._process_direct_payment(processing_values)
-        return {}
+            
+            # Determinar URL de redirección
+            redirect_url = '/payment/status'
+            if hasattr(tx, 'return_url') and tx.return_url:
+                redirect_url = tx.return_url
+            elif hasattr(tx, 'landing_route') and tx.landing_route:
+                redirect_url = tx.landing_route
+
+            _logger.info("🎉 Pago procesado exitosamente, redirigiendo a: %s", redirect_url)
+            
+            return {'redirect_url': redirect_url}
+            
+        except Exception as e:
+            _logger.exception("❌ Error confirmando pago Culqi: %s", e)
+            return {'success': False, 'error': str(e)}
 
     @http.route(_process_card_url, type='json', auth='public', methods=['POST'])
     def culqi_process_card(self, **kwargs):
@@ -56,9 +113,11 @@ class CulqiController(http.Controller):
             reference = kwargs.get('reference')
             card_data = kwargs.get('card_data', {})
             amount = kwargs.get('amount')
+            extra_info = kwargs.get('extra_info', {})
 
             _logger.info("🚀 Procesando tarjeta - Provider: %s, Referencia: %s, Monto: %s centavos", 
                         provider_id, reference, amount)
+            _logger.info("📋 Info extra: %s", extra_info)
             
             # Validaciones básicas
             if not provider_id:
@@ -80,15 +139,49 @@ class CulqiController(http.Controller):
 
             # Obtener transacción
             tx = None
-            if reference:
-                tx = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
-                    'culqi', {'metadata': {'tx_ref': reference}}
-                )
             
+            # Método 1: Buscar por referencia usando el método estándar
+            try:
+                if reference and reference != 'NO_REFERENCE':
+                    tx = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
+                        'culqi', {'metadata': {'tx_ref': reference}}
+                    )
+            except Exception as e:
+                _logger.warning("⚠️ No se pudo obtener transacción por método estándar: %s", e)
+                
+            # Método 2: Buscar directamente por referencia
+            if not tx and reference and reference != 'NO_REFERENCE':
+                tx = request.env['payment.transaction'].sudo().search([
+                    ('reference', '=', reference),
+                    ('provider_id', '=', provider_id)
+                ], limit=1)
+                
+            # Método 3: Buscar por monto y proveedor si tenemos información de la URL
+            if not tx and extra_info.get('current_url'):
+                current_url = extra_info['current_url']
+                amount_soles = amount / 100.0
+                
+                # Si es una factura, buscar por monto
+                if 'invoices' in current_url:
+                    tx = request.env['payment.transaction'].sudo().search([
+                        ('provider_id', '=', provider_id),
+                        ('amount', '=', amount_soles),
+                        ('state', 'in', ['draft', 'pending']),
+                    ], order='create_date desc', limit=1)
+                    _logger.info("🔍 Búsqueda por monto de factura: %s soles", amount_soles)
+                    
+            # Método 4: Buscar la transacción más reciente del proveedor en estado pendiente
             if not tx:
-                return {'success': False, 'error': 'Transacción no encontrada'}
+                _logger.info("🔍 Buscando transacción pendiente más reciente para proveedor %s", provider_id)
+                tx = request.env['payment.transaction'].sudo().search([
+                    ('provider_id', '=', provider_id),
+                    ('state', 'in', ['draft', 'pending']),
+                ], order='create_date desc', limit=1)
+                
+            if not tx:
+                return {'success': False, 'error': f'No se encontró transacción válida para la referencia: {reference}'}
 
-            _logger.info("✅ Transacción encontrada: %s", tx.reference)
+            _logger.info("✅ Transacción encontrada: %s (ID: %s, Estado: %s)", tx.reference, tx.id, tx.state)
 
             # Crear token en Culqi API
             token_data = {

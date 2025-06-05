@@ -13,7 +13,7 @@ paymentForm.include({
             return;
         }
 
-        console.log('🚀 Iniciando configuración de Culqi (Backend Token)...');
+        console.log('🚀 Iniciando configuración de Culqi v4...');
         this._hideInputs();
         this._setPaymentFlow('direct');
 
@@ -47,6 +47,7 @@ paymentForm.include({
                 throw new Error('Falta la clave pública de Culqi');
             }
 
+            const culqiPublicKey = inlineFormValues.public_key;
             const providerId = inlineFormValues.provider_id;
 
             // Obtener el monto de la transacción
@@ -70,175 +71,216 @@ paymentForm.include({
                 console.log('⚠️ Usando monto de fallback:', orderAmount);
             }
 
-            console.log('💵 Monto final: S/ ' + orderAmount);
+            const amountInCents = Math.round(orderAmount * 100);
+            console.log('💵 Monto final: S/ ' + orderAmount + ' → ' + amountInCents + ' centavos');
 
-            // Crear formulario de tarjeta personalizado
-            const culqiBtnContainer = document.getElementById('o_culqi_checkout_placeholder');
-            if (culqiBtnContainer) {
-                culqiBtnContainer.innerHTML = `
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fa fa-credit-card"></i> Pagar con Tarjeta</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-12 mb-3">
-                                    <label class="form-label">Número de Tarjeta</label>
-                                    <input type="text" id="card_number" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19">
-                                    <small class="text-muted">Usar: 4111 1111 1111 1111 para pruebas</small>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Vencimiento</label>
-                                    <input type="text" id="expiry_date" class="form-control" placeholder="MM/YY" maxlength="5">
-                                    <small class="text-muted">Usar: 12/30</small>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">CVV</label>
-                                    <input type="text" id="cvv" class="form-control" placeholder="123" maxlength="4">
-                                    <small class="text-muted">Usar: 123</small>
-                                </div>
-                                <div class="col-md-12 mb-3">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" id="email" class="form-control" placeholder="email@ejemplo.com" value="review@culqi.com">
-                                </div>
-                            </div>
-                            <button id="pay_button" class="btn btn-primary btn-lg w-100">
-                                <i class="fa fa-lock"></i> Pagar S/ ${orderAmount}
-                            </button>
-                            <div class="text-center mt-2">
-                                <small class="text-muted">🔒 Pago seguro con Culqi</small>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                // Formateo automático de campos
-                document.getElementById('card_number').addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\s/g, '');
-                    let formattedValue = value.replace(/(\d{4})(?=\d)/g, '$1 ');
-                    if (formattedValue !== e.target.value) {
-                        e.target.value = formattedValue;
-                    }
-                });
-
-                document.getElementById('expiry_date').addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\D/g, '');
-                    if (value.length >= 2) {
-                        value = value.substring(0,2) + '/' + value.substring(2,4);
-                    }
-                    e.target.value = value;
-                });
-
-                document.getElementById('cvv').addEventListener('input', function(e) {
-                    e.target.value = e.target.value.replace(/\D/g, '');
-                });
-
-                // Manejar el pago
-                const self = this; // Guardar contexto
-                document.getElementById('pay_button').addEventListener('click', async function(e) {
-                    e.preventDefault();
+            // Obtener referencia de transacción de manera más robusta
+            let txReference = this.txReference;
+            
+            // Si no hay referencia, buscarla de diferentes maneras
+            if (!txReference) {
+                // Buscar en el DOM
+                const refElement = document.querySelector('[name="reference"]') || 
+                                 document.querySelector('[data-reference]') ||
+                                 document.querySelector('#reference');
+                if (refElement) {
+                    txReference = refElement.value || refElement.dataset.reference || refElement.textContent;
+                }
+                
+                // Buscar en la URL
+                if (!txReference) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    txReference = urlParams.get('reference') || urlParams.get('tx_ref');
+                }
+                
+                // Generar desde información de la página
+                if (!txReference) {
+                    const currentUrl = window.location.href;
+                    const invoiceMatch = currentUrl.match(/invoices\/(\d+)/);
                     
-                    const cardNumber = document.getElementById('card_number').value.replace(/\s/g, '');
-                    const expiryDate = document.getElementById('expiry_date').value;
-                    const cvv = document.getElementById('cvv').value;
-                    const email = document.getElementById('email').value;
-
-                    // Validaciones básicas
-                    if (!cardNumber || cardNumber.length < 13) {
-                        alert('Por favor ingrese un número de tarjeta válido');
-                        return;
+                    if (invoiceMatch) {
+                        txReference = 'TX-INV-' + invoiceMatch[1] + '-' + Date.now();
+                    } else {
+                        txReference = 'TX-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
                     }
-                    if (!expiryDate || !expiryDate.includes('/')) {
-                        alert('Por favor ingrese una fecha de vencimiento válida (MM/YY)');
-                        return;
-                    }
-                    if (!cvv || cvv.length < 3) {
-                        alert('Por favor ingrese un CVV válido');
-                        return;
-                    }
-                    if (!email || !email.includes('@')) {
-                        alert('Por favor ingrese un email válido');
-                        return;
-                    }
+                    console.warn('⚠️ Generando referencia:', txReference);
+                }
+            }
+            
+            console.log('🔍 Referencia de transacción:', txReference);
 
-                    const [month, year] = expiryDate.split('/');
+            // Cargar SDK de Culqi v4
+            console.log('📦 Cargando SDK de Culqi v4...');
+            await loadJS('https://checkout.culqi.com/js/v4');
 
-                    // Verificar que tenemos la referencia
-                    const txRef = self.txReference || 'NO_REFERENCE';
-                    console.log('🔍 Referencia de transacción:', txRef);
+            // Verificar que Culqi se haya cargado
+            if (typeof window.Culqi === 'undefined') {
+                throw new Error('No se pudo cargar el SDK de Culqi');
+            }
+            console.log('✅ SDK de Culqi v4 cargado exitosamente');
 
-                    console.log('💳 Procesando pago con datos:', {
-                        card: cardNumber.substring(0, 4) + '****',
-                        expiry: expiryDate,
-                        email: email,
-                        provider_id: providerId,
-                        reference: txRef
+            // Configurar clave pública
+            window.Culqi.publicKey = culqiPublicKey;
+            console.log('🔑 Clave pública configurada: pk_***');
+
+            // Configurar settings obligatorios para v4
+            const settings = {
+                title: 'Pago Odoo',
+                currency: 'PEN',
+                amount: amountInCents,
+                description: 'Pago desde Odoo'
+            };
+
+            // Agregar cifrado RSA si está configurado
+            if (inlineFormValues.rsa_id && inlineFormValues.rsa_public_key) {
+                settings.xculqirsaid = inlineFormValues.rsa_id;
+                settings.rsapublickey = inlineFormValues.rsa_public_key;
+                console.log('🔐 Cifrado RSA configurado: rsa_***');
+            }
+
+            console.log('⚙️ Configurando Culqi settings...');
+            window.Culqi.settings(settings);
+
+            // Configurar opciones de estilo y comportamiento
+            const options = {
+                lang: "es",
+                installments: false,
+                paymentMethods: {
+                    tarjeta: true,
+                    yape: true,
+                    bancaMovil: true,
+                    agente: true,
+                    billetera: true,
+                    cuotealo: false
+                },
+                style: {
+                    logo: inlineFormValues.logo_url || '',
+                    bannerColor: inlineFormValues.banner_color || '#0033A0',
+                    buttonBackground: inlineFormValues.button_color || '#0033A0',
+                    buttonText: 'Pagar ahora',
+                    buttonTextColor: '#FFFFFF'
+                }
+            };
+
+            console.log('🎨 Configurando opciones de estilo...');
+            window.Culqi.options(options);
+
+            // Función global para manejar respuestas exitosas
+            window.culqi = async function() {
+                console.log('🔄 Callback de Culqi ejecutado');
+                
+                if (window.Culqi.token) {
+                    console.log('✅ Token creado exitosamente: tkn_***');
+                    console.log('📄 Datos del token:', {
+                        id: 'tkn_***',
+                        email: window.Culqi.token.email || 'No email',
+                        card_number: window.Culqi.token.card_number || 'No card',
+                        last_four: window.Culqi.token.last_four || 'N/A',
+                        card_brand: window.Culqi.token.card_brand || 'N/A'
                     });
-
-                    // Deshabilitar botón y mostrar loading
-                    e.target.disabled = true;
-                    e.target.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Procesando...';
-
+                    
                     try {
-                        // Enviar datos al backend para crear token y procesar pago
-                        console.log('📤 Enviando datos al backend...');
-                        const result = await rpc('/payment/culqi/process_card', {
+                        console.log('📤 Enviando token al backend...');
+                        const result = await rpc('/payment/culqi/confirm', {
                             provider_id: providerId,
-                            reference: txRef,
-                            card_data: {
-                                card_number: cardNumber,
-                                expiration_month: month,
-                                expiration_year: '20' + year,
-                                cvv: cvv,
-                                email: email
-                            },
-                            amount: Math.round(orderAmount * 100) // centavos
+                            token: window.Culqi.token.id,
+                            reference: txReference,
                         });
-
+                        
                         console.log('✅ Respuesta del backend:', result);
-
-                        if (result.success) {
-                            console.log('✅ Pago procesado exitosamente');
-                            if (result.redirect_url) {
-                                console.log('↗️ Redirigiendo a:', result.redirect_url);
-                                window.location = result.redirect_url;
-                            } else {
-                                console.log('↗️ Redirigiendo a estado de pago por defecto');
-                                window.location = '/payment/status';
-                            }
+                        
+                        if (result.redirect_url) {
+                            console.log('↗️ Redirigiendo a:', result.redirect_url);
+                            window.location = result.redirect_url;
                         } else {
-                            console.error('❌ Error en el pago:', result.error);
-                            alert('Error en el pago: ' + (result.error || 'Error desconocido'));
+                            console.log('↗️ Redirigiendo a estado de pago por defecto');
+                            window.location = '/payment/status';
                         }
-
+                        
                     } catch (error) {
                         console.error('❌ Error procesando pago:', error);
-                        let errorMessage = 'Error procesando el pago';
+                        alert('Error procesando el pago: ' + (error.data?.message || error.message));
+                    }
+                    
+                } else if (window.Culqi.order) {
+                    console.log('📋 Order creado para método alternativo');
+                    
+                    try {
+                        const result = await rpc('/payment/culqi/confirm_order', {
+                            provider_id: providerId,
+                            order: window.Culqi.order,
+                            reference: txReference,
+                        });
                         
-                        if (error instanceof RPCError && error.data?.message) {
-                            errorMessage = error.data.message;
-                        } else if (error.message) {
-                            errorMessage = error.message;
+                        if (result.redirect_url) {
+                            window.location = result.redirect_url;
                         }
                         
-                        alert(errorMessage);
-                    } finally {
-                        // Rehabilitar botón
-                        e.target.disabled = false;
-                        e.target.innerHTML = `<i class="fa fa-lock"></i> Pagar S/ ${orderAmount}`;
+                    } catch (error) {
+                        console.error('❌ Error procesando order:', error);
+                        alert('Error procesando la orden de pago');
                     }
-                });
+                }
+            };
 
-                console.log('✅ Formulario de tarjeta creado');
+            // Función global para manejar errores de Culqi
+            window.culqiError = function() {
+                console.error('❌ Error en Culqi:', window.Culqi.error);
+                
+                let errorMessage = 'Error en el proceso de pago';
+                
+                if (window.Culqi.error && window.Culqi.error.merchant_message) {
+                    errorMessage = window.Culqi.error.merchant_message;
+                } else if (window.Culqi.error && window.Culqi.error.user_message) {
+                    errorMessage = window.Culqi.error.user_message;
+                }
+                
+                console.log('📝 Mostrando error al usuario:', errorMessage);
+                alert('Error: ' + errorMessage);
+            };
+
+            console.log('✅ Funciones callback configuradas');
+
+            // Crear botón de pago oficial de Culqi
+            const culqiBtnContainer = document.getElementById('o_culqi_checkout_placeholder');
+            if (culqiBtnContainer) {
+                culqiBtnContainer.innerHTML = '';
+                const button = document.createElement('button');
+                button.className = 'btn btn-primary btn-lg w-100';
+                button.innerText = _t("Pagar con Culqi");
+                button.onclick = function (e) {
+                    e.preventDefault();
+                    console.log('🔘 Botón de pago clickeado - Abriendo Culqi...');
+                    window.Culqi.open();
+                };
+                culqiBtnContainer.appendChild(button);
+                console.log('🔘 Botón de pago creado y configurado');
+                
+                // Agregar información de prueba
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'alert alert-info mt-3';
+                infoDiv.innerHTML = `
+                    <h6><i class="fa fa-info-circle"></i> Datos de prueba:</h6>
+                    <small>
+                        <strong>Tarjeta:</strong> 4111 1111 1111 1111<br>
+                        <strong>Vencimiento:</strong> 12/30<br>
+                        <strong>CVV:</strong> 123<br>
+                        <strong>Email:</strong> review@culqi.com
+                    </small>
+                `;
+                culqiBtnContainer.appendChild(infoDiv);
+                
+            } else {
+                console.warn('⚠️ No se encontró el contenedor del botón: o_culqi_checkout_placeholder');
             }
 
             document.getElementById('o_culqi_loading')?.classList.add('d-none');
             document.getElementById('o_culqi_button_container')?.classList.remove('d-none');
 
-            console.log('🎉 Configuración completada - Usando backend para tokens');
+            console.log('🎉 Configuración de Culqi v4 completada exitosamente');
 
         } catch (error) {
-            console.error('❌ Error configurando formulario:', error);
+            console.error('❌ Error configurando Culqi:', error);
             document.getElementById('o_culqi_loading')?.classList.add('d-none');
             alert('Error de configuración: ' + error.message);
             return;
