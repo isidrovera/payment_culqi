@@ -1,9 +1,5 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 from . import payment_provider
 from . import payment_transaction
-from . import culqi_customer
-from . import culqi_card
-from . import culqi_plan
-from . import culqi_subscription
-from . import culqi_refund
-from . import account_move
-from . import sale_order
+from . import utils

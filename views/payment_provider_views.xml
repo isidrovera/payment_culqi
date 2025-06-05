@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_payment_provider_form_inherit_culqi" model="ir.ui.view">
+        <field name="name">payment.provider.form.inherit.culqi</field>
+        <field name="model">payment.provider</field>
+        <field name="inherit_id" ref="payment.payment_provider_form"/>
+        <field name="arch" type="xml">
+            <group name="provider_credentials" position="inside">
+                <group attrs="{'invisible': [('code', '!=', 'culqi')]}">
+                    <field name="culqi_public_key" required="1"/>
+                    <field name="culqi_secret_key" password="True" required="1"/>
+                    <field name="culqi_rsa_id"/>
+                    <field name="culqi_rsa_public_key"/>
+                    <widget
+                        name="documentation_link"
+                        path="https://docs.culqi.com/"
+                        label="¿Cómo obtener tus llaves Culqi?"
+                        colspan="2"
+                    />
+                </group>
+            </group>
+        </field>
+    </record>
+
+</odoo>
