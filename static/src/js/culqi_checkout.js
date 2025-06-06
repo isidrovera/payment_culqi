@@ -50,25 +50,76 @@ paymentForm.include({
             const culqiPublicKey = inlineFormValues.public_key;
             const providerId = inlineFormValues.provider_id;
 
-            // Obtener el monto de la transacción
+            // Obtener el monto de la transacción de manera más robusta
             let orderAmount = 0;
             
+            // Método 1: this.orderAmount
             if (this.orderAmount && !isNaN(this.orderAmount)) {
                 orderAmount = parseFloat(this.orderAmount);
                 console.log('💰 Monto obtenido de this.orderAmount:', orderAmount);
-            } else {
-                const amountElement = document.querySelector('.oe_currency_value, [data-oe-expression*="amount"], .monetary_field');
-                if (amountElement) {
-                    const amountText = amountElement.textContent || amountElement.innerText || '';
-                    const cleanAmount = amountText.replace(/[^\d.,]/g, '').replace(',', '.');
-                    orderAmount = parseFloat(cleanAmount) || 0;
-                    console.log('💰 Monto obtenido del DOM:', amountText, '→', orderAmount);
+            } 
+            // Método 2: Buscar en elementos específicos de la página
+            else {
+                const amountSelectors = [
+                    '.oe_currency_value',
+                    '[data-oe-expression*="amount"]',
+                    '.monetary_field',
+                    '.o_total_row .oe_currency_value',
+                    '.o_payment_form .oe_currency_value',
+                    '[data-field="amount_total"]',
+                    '.invoice_amount',
+                    '.total-amount',
+                    '.amount-due'
+                ];
+                
+                for (const selector of amountSelectors) {
+                    const amountElement = document.querySelector(selector);
+                    if (amountElement) {
+                        const amountText = amountElement.textContent || amountElement.innerText || '';
+                        const cleanAmount = amountText.replace(/[^\d.,]/g, '').replace(',', '.');
+                        const parsedAmount = parseFloat(cleanAmount);
+                        
+                        if (parsedAmount && parsedAmount > 0) {
+                            orderAmount = parsedAmount;
+                            console.log('💰 Monto obtenido del DOM (' + selector + '):', amountText, '→', orderAmount);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Método 3: Buscar en la URL si es una factura
+            if (!orderAmount || orderAmount <= 0) {
+                const currentUrl = window.location.href;
+                const invoiceMatch = currentUrl.match(/invoices\/(\d+)/);
+                
+                if (invoiceMatch) {
+                    // Intentar obtener el monto de elementos específicos de factura
+                    const invoiceAmountSelectors = [
+                        '.o_invoice_outstanding_credits_debits .oe_currency_value',
+                        'table.o_list_table .oe_currency_value:last-child',
+                        '.o_form_monetary .oe_currency_value'
+                    ];
+                    
+                    for (const selector of invoiceAmountSelectors) {
+                        const element = document.querySelector(selector);
+                        if (element) {
+                            const text = element.textContent || element.innerText || '';
+                            const amount = parseFloat(text.replace(/[^\d.,]/g, '').replace(',', '.'));
+                            if (amount && amount > 0) {
+                                orderAmount = amount;
+                                console.log('💰 Monto obtenido de factura:', text, '→', orderAmount);
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
+            // Fallback con valor por defecto solo si realmente no encontramos nada
             if (!orderAmount || orderAmount <= 0) {
                 orderAmount = 122.00;
-                console.log('⚠️ Usando monto de fallback:', orderAmount);
+                console.log('⚠️ Usando monto de fallback (no se encontró monto real):', orderAmount);
             }
 
             const amountInCents = Math.round(orderAmount * 100);
@@ -331,12 +382,13 @@ paymentForm.include({
                         <div class="card-body text-center p-4">
                             <div class="mb-3">
                                 <i class="fa fa-credit-card fa-2x text-primary mb-2"></i>
-                                <h5 class="card-title">Pago Seguro</h5>
-                                <p class="text-muted">Procesa tu pago de forma segura con Culqi</p>
+                                <h5 class="card-title text-dark">Pago Seguro</h5>
+                                <p class="text-secondary">Procesa tu pago de forma segura con Culqi</p>
                             </div>
                             
-                            <div class="payment-amount mb-3">
-                                <span class="h4 text-success">S/ ${orderAmount.toFixed(2)}</span>
+                            <div class="payment-amount-display mb-3">
+                                <div class="amount-label text-muted small">Total a pagar:</div>
+                                <div class="amount-value">S/ ${orderAmount.toFixed(2)}</div>
                             </div>
                             
                             <button id="culqi-pay-button" class="btn btn-primary btn-lg w-100 mb-3">
@@ -345,12 +397,12 @@ paymentForm.include({
                             </button>
                             
                             <div class="security-info">
-                                <small class="text-muted d-block">
-                                    <i class="fa fa-shield-alt text-success"></i>
+                                <small class="text-secondary d-block">
+                                    <i class="fa fa-shield-alt text-success me-1"></i>
                                     Pago protegido con cifrado SSL
                                 </small>
-                                <small class="text-muted d-block mt-1">
-                                    <i class="fa fa-clock text-info"></i>
+                                <small class="text-secondary d-block mt-1">
+                                    <i class="fa fa-clock text-warning me-1"></i>
                                     Sesión expira en 5 minutos por seguridad
                                 </small>
                             </div>
@@ -406,46 +458,86 @@ paymentForm.include({
                 .culqi-payment-container .card {
                     border-radius: 15px;
                     transition: transform 0.2s ease;
+                    background: #ffffff;
+                    border: 1px solid #e3e6f0;
                 }
                 
                 .culqi-payment-container .card:hover {
                     transform: translateY(-2px);
+                    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
                 }
                 
-                .payment-amount {
-                    background: linear-gradient(45deg, #28a745, #20c997);
+                .payment-amount-display {
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
                     color: white;
-                    padding: 15px;
-                    border-radius: 10px;
-                    margin: 15px 0;
+                    padding: 20px;
+                    border-radius: 12px;
+                    margin: 20px 0;
+                    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
+                }
+                
+                .amount-label {
+                    font-size: 0.85rem;
+                    opacity: 0.9;
+                    margin-bottom: 5px;
+                    font-weight: 500;
+                }
+                
+                .amount-value {
+                    font-size: 2.2rem;
+                    font-weight: 700;
+                    color: white;
+                    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }
                 
                 #culqi-pay-button {
                     border-radius: 25px;
-                    padding: 12px 30px;
+                    padding: 15px 30px;
                     font-weight: 600;
+                    font-size: 1.1rem;
                     transition: all 0.3s ease;
-                    background: linear-gradient(45deg, #007bff, #0056b3);
+                    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
                     border: none;
+                    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
                 }
                 
-                #culqi-pay-button:hover {
-                    transform: translateY(-1px);
-                    box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+                #culqi-pay-button:hover:not(:disabled) {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+                    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
                 }
                 
                 #culqi-pay-button:disabled {
                     opacity: 0.7;
                     transform: none;
+                    cursor: not-allowed;
                 }
                 
                 .security-info {
                     border-top: 1px solid #e9ecef;
                     padding-top: 15px;
+                    margin-top: 15px;
                 }
                 
-                .fa-shield-alt, .fa-clock {
-                    margin-right: 5px;
+                .security-info small {
+                    color: #6c757d !important;
+                    font-weight: 500;
+                }
+                
+                .fa-shield-alt {
+                    color: #28a745 !important;
+                }
+                
+                .fa-clock {
+                    color: #ffc107 !important;
+                }
+                
+                .text-dark {
+                    color: #212529 !important;
+                }
+                
+                .text-secondary {
+                    color: #6c757d !important;
                 }
                 
                 /* Animación de carga */
@@ -457,6 +549,22 @@ paymentForm.include({
                 
                 .loading-pulse {
                     animation: pulse 1.5s infinite;
+                }
+                
+                /* Responsivo */
+                @media (max-width: 576px) {
+                    .culqi-payment-container {
+                        margin: 0 15px;
+                    }
+                    
+                    .amount-value {
+                        font-size: 1.8rem;
+                    }
+                    
+                    #culqi-pay-button {
+                        padding: 12px 25px;
+                        font-size: 1rem;
+                    }
                 }
             `;
             document.head.appendChild(style);
