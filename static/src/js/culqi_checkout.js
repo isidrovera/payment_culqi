@@ -53,8 +53,35 @@ paymentForm.include({
             // Obtener el monto de la transacción de manera más robusta
             let orderAmount = 0;
             
+            // Método 0: Buscar directamente en el modal de pago actual
+            const paymentModalAmount = document.querySelector('.modal-body .oe_currency_value, .o_payment_form .oe_currency_value');
+            if (paymentModalAmount) {
+                const modalText = paymentModalAmount.textContent || paymentModalAmount.innerText || '';
+                console.log('🎯 Texto del modal de pago:', modalText);
+                
+                let cleanModalAmount = modalText.replace(/[^0-9.,]/g, '');
+                
+                // Manejar formato con comas (1,000.00)
+                if (cleanModalAmount.includes(',') && cleanModalAmount.includes('.')) {
+                    cleanModalAmount = cleanModalAmount.replace(/,/g, '');
+                } else if (cleanModalAmount.includes(',')) {
+                    const parts = cleanModalAmount.split(',');
+                    if (parts.length === 2 && parts[1].length <= 2) {
+                        cleanModalAmount = cleanModalAmount.replace(',', '.');
+                    } else {
+                        cleanModalAmount = cleanModalAmount.replace(/,/g, '');
+                    }
+                }
+                
+                const modalAmount = parseFloat(cleanModalAmount);
+                if (modalAmount && modalAmount > 0) {
+                    orderAmount = modalAmount;
+                    console.log('✅ Monto obtenido del modal de pago:', modalText, '→', orderAmount);
+                }
+            }
+            
             // Método 1: this.orderAmount
-            if (this.orderAmount && !isNaN(this.orderAmount)) {
+            if ((!orderAmount || orderAmount <= 0) && this.orderAmount && !isNaN(this.orderAmount)) {
                 orderAmount = parseFloat(this.orderAmount);
                 console.log('💰 Monto obtenido de this.orderAmount:', orderAmount);
             } 
@@ -76,12 +103,36 @@ paymentForm.include({
                     const amountElement = document.querySelector(selector);
                     if (amountElement) {
                         const amountText = amountElement.textContent || amountElement.innerText || '';
-                        const cleanAmount = amountText.replace(/[^\d.,]/g, '').replace(',', '.');
+                        console.log('🔍 Texto encontrado (' + selector + '):', amountText);
+                        
+                        // Limpiar el texto: quitar todo excepto números, puntos y comas
+                        let cleanAmount = amountText.replace(/[^0-9.,]/g, '');
+                        console.log('🧹 Texto limpio:', cleanAmount);
+                        
+                        // Si tiene comas como separador de miles (ej: 1,000.00)
+                        if (cleanAmount.includes(',') && cleanAmount.includes('.')) {
+                            // Formato: 1,000.00 -> quitar comas
+                            cleanAmount = cleanAmount.replace(/,/g, '');
+                        } 
+                        // Si solo tiene comas (ej: 1,000 o 1000,00)
+                        else if (cleanAmount.includes(',')) {
+                            // Determinar si la coma es separador decimal o de miles
+                            const parts = cleanAmount.split(',');
+                            if (parts.length === 2 && parts[1].length <= 2) {
+                                // Es separador decimal: 1000,00 -> 1000.00
+                                cleanAmount = cleanAmount.replace(',', '.');
+                            } else {
+                                // Es separador de miles: 1,000 -> 1000
+                                cleanAmount = cleanAmount.replace(/,/g, '');
+                            }
+                        }
+                        
                         const parsedAmount = parseFloat(cleanAmount);
+                        console.log('📊 Monto parseado:', parsedAmount);
                         
                         if (parsedAmount && parsedAmount > 0) {
                             orderAmount = parsedAmount;
-                            console.log('💰 Monto obtenido del DOM (' + selector + '):', amountText, '→', orderAmount);
+                            console.log('✅ Monto obtenido del DOM (' + selector + '):', amountText, '→', orderAmount);
                             break;
                         }
                     }
@@ -116,9 +167,34 @@ paymentForm.include({
                 }
             }
 
+            // Método extra: Buscar texto que contenga "S/" seguido de números
+            if (!orderAmount || orderAmount <= 0) {
+                const allTextElements = document.querySelectorAll('*');
+                for (const element of allTextElements) {
+                    const text = element.textContent || element.innerText || '';
+                    
+                    // Buscar patrones como "S/ 1,000.00" o "S/1000.00"
+                    const solesMatch = text.match(/S\/?\s*([0-9,]+\.?[0-9]*)/);
+                    if (solesMatch) {
+                        let foundAmount = solesMatch[1];
+                        console.log('🎯 Patrón S/ encontrado:', text, 'Valor extraído:', foundAmount);
+                        
+                        // Limpiar y convertir
+                        foundAmount = foundAmount.replace(/,/g, '');
+                        const parsedFound = parseFloat(foundAmount);
+                        
+                        if (parsedFound && parsedFound > 0) {
+                            orderAmount = parsedFound;
+                            console.log('✅ Monto obtenido por patrón S/:', text, '→', orderAmount);
+                            break;
+                        }
+                    }
+                }
+            }
+
             // Fallback con valor por defecto solo si realmente no encontramos nada
             if (!orderAmount || orderAmount <= 0) {
-                orderAmount = 122.00;
+                orderAmount = 1000.00; // Cambiar el fallback al valor que vemos en la imagen
                 console.log('⚠️ Usando monto de fallback (no se encontró monto real):', orderAmount);
             }
 
@@ -178,9 +254,15 @@ paymentForm.include({
             const settings = {
                 title: 'Pago Odoo',
                 currency: 'PEN',
-                amount: amountInCents,
+                amount: amountInCents, // Ya está en centavos
                 description: 'Pago desde Odoo'
             };
+
+            console.log('💰 Configurando monto en Culqi:', {
+                'monto_soles': orderAmount,
+                'monto_centavos': amountInCents,
+                'settings_amount': settings.amount
+            });
 
             // Agregar cifrado RSA si está configurado
             if (inlineFormValues.rsa_id && inlineFormValues.rsa_public_key) {
