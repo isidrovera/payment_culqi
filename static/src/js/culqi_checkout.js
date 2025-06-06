@@ -170,14 +170,7 @@ paymentForm.include({
                 console.log('🔄 Callback de Culqi ejecutado');
                 
                 if (window.Culqi.token) {
-                    console.log('✅ Token creado exitosamente: tkn_***');
-                    console.log('📄 Datos del token:', {
-                        id: 'tkn_***',
-                        email: window.Culqi.token.email || 'No email',
-                        card_number: window.Culqi.token.card_number || 'No card',
-                        last_four: window.Culqi.token.last_four || 'N/A',
-                        card_brand: window.Culqi.token.card_brand || 'N/A'
-                    });
+                    console.log('✅ Token creado exitosamente');
                     
                     try {
                         console.log('📤 Enviando token al backend...');
@@ -241,34 +234,157 @@ paymentForm.include({
 
             console.log('✅ Funciones callback configuradas');
 
+            // Variables para control de temporizador y seguridad
+            let inactivityTimer = null;
+            let isPaymentModalOpen = false;
+            const INACTIVITY_TIMEOUT = 300000; // 5 minutos en milisegundos
+
+            // Función para iniciar temporizador de inactividad
+            function startInactivityTimer() {
+                if (inactivityTimer) {
+                    clearTimeout(inactivityTimer);
+                }
+                
+                inactivityTimer = setTimeout(() => {
+                    if (isPaymentModalOpen) {
+                        console.log('⏱️ Cerrando modal por inactividad');
+                        window.Culqi.close();
+                        isPaymentModalOpen = false;
+                        alert('Sesión de pago cerrada por inactividad. Por favor, intente nuevamente.');
+                    }
+                }, INACTIVITY_TIMEOUT);
+            }
+
+            // Función para resetear temporizador
+            function resetInactivityTimer() {
+                if (isPaymentModalOpen) {
+                    startInactivityTimer();
+                }
+            }
+
+            // Función para enmascarar datos sensibles en logs
+            function maskSensitiveData() {
+                // Interceptar console.log para ocultar datos sensibles
+                const originalLog = console.log;
+                console.log = function(...args) {
+                    const maskedArgs = args.map(arg => {
+                        if (typeof arg === 'string') {
+                            // Enmascarar números de tarjeta
+                            arg = arg.replace(/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g, '****-****-****-****');
+                            // Enmascarar CVV
+                            arg = arg.replace(/\bcvv[:\s]*\d{3,4}\b/gi, 'cvv: ***');
+                            // Enmascarar tokens
+                            arg = arg.replace(/tkn_[a-zA-Z0-9]{20,}/g, 'tkn_***[MASKED]***');
+                        }
+                        return arg;
+                    });
+                    originalLog.apply(console, maskedArgs);
+                };
+            }
+
+            // Aplicar enmascaramiento de datos sensibles
+            maskSensitiveData();
+
+            // Override del método open de Culqi para control de eventos
+            const originalCulqiOpen = window.Culqi.open;
+            window.Culqi.open = function() {
+                isPaymentModalOpen = true;
+                startInactivityTimer();
+                
+                // Detectar actividad del usuario en el modal
+                document.addEventListener('click', resetInactivityTimer);
+                document.addEventListener('keypress', resetInactivityTimer);
+                document.addEventListener('mousemove', resetInactivityTimer);
+                
+                console.log('🔓 Modal de pago abierto - Temporizador iniciado');
+                return originalCulqiOpen.apply(this, arguments);
+            };
+
+            // Override del método close de Culqi
+            const originalCulqiClose = window.Culqi.close;
+            window.Culqi.close = function() {
+                isPaymentModalOpen = false;
+                if (inactivityTimer) {
+                    clearTimeout(inactivityTimer);
+                    inactivityTimer = null;
+                }
+                
+                // Remover listeners de actividad
+                document.removeEventListener('click', resetInactivityTimer);
+                document.removeEventListener('keypress', resetInactivityTimer);
+                document.removeEventListener('mousemove', resetInactivityTimer);
+                
+                console.log('🔒 Modal de pago cerrado - Temporizador cancelado');
+                return originalCulqiClose.apply(this, arguments);
+            };
+
             // Crear botón de pago oficial de Culqi
             const culqiBtnContainer = document.getElementById('o_culqi_checkout_placeholder');
             if (culqiBtnContainer) {
                 culqiBtnContainer.innerHTML = '';
-                const button = document.createElement('button');
-                button.className = 'btn btn-primary btn-lg w-100';
-                button.innerText = _t("Pagar con Culqi");
-                button.onclick = function (e) {
-                    e.preventDefault();
-                    console.log('🔘 Botón de pago clickeado - Abriendo Culqi...');
-                    window.Culqi.open();
-                };
-                culqiBtnContainer.appendChild(button);
-                console.log('🔘 Botón de pago creado y configurado');
                 
-                // Agregar información de prueba
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'alert alert-info mt-3';
-                infoDiv.innerHTML = `
-                    <h6><i class="fa fa-info-circle"></i> Datos de prueba:</h6>
-                    <small>
-                        <strong>Tarjeta:</strong> 4111 1111 1111 1111<br>
-                        <strong>Vencimiento:</strong> 12/30<br>
-                        <strong>CVV:</strong> 123<br>
-                        <strong>Email:</strong> review@culqi.com
-                    </small>
+                // Contenedor principal
+                const paymentContainer = document.createElement('div');
+                paymentContainer.className = 'culqi-payment-container';
+                paymentContainer.innerHTML = `
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="mb-3">
+                                <i class="fa fa-credit-card fa-2x text-primary mb-2"></i>
+                                <h5 class="card-title">Pago Seguro</h5>
+                                <p class="text-muted">Procesa tu pago de forma segura con Culqi</p>
+                            </div>
+                            
+                            <div class="payment-amount mb-3">
+                                <span class="h4 text-success">S/ ${orderAmount.toFixed(2)}</span>
+                            </div>
+                            
+                            <button id="culqi-pay-button" class="btn btn-primary btn-lg w-100 mb-3">
+                                <i class="fa fa-lock me-2"></i>
+                                ${_t("Pagar Ahora")}
+                            </button>
+                            
+                            <div class="security-info">
+                                <small class="text-muted d-block">
+                                    <i class="fa fa-shield-alt text-success"></i>
+                                    Pago protegido con cifrado SSL
+                                </small>
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fa fa-clock text-info"></i>
+                                    Sesión expira en 5 minutos por seguridad
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                 `;
-                culqiBtnContainer.appendChild(infoDiv);
+                
+                culqiBtnContainer.appendChild(paymentContainer);
+                
+                // Agregar evento al botón
+                document.getElementById('culqi-pay-button').onclick = function (e) {
+                    e.preventDefault();
+                    console.log('🔘 Iniciando proceso de pago seguro...');
+                    
+                    // Cambiar estado del botón
+                    e.target.disabled = true;
+                    e.target.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Cargando...';
+                    
+                    // Abrir modal de Culqi
+                    try {
+                        window.Culqi.open();
+                    } catch (error) {
+                        console.error('Error abriendo modal:', error);
+                        alert('Error al abrir el formulario de pago');
+                    } finally {
+                        // Restaurar botón después de un delay
+                        setTimeout(() => {
+                            e.target.disabled = false;
+                            e.target.innerHTML = '<i class="fa fa-lock me-2"></i>Pagar Ahora';
+                        }, 2000);
+                    }
+                };
+                
+                console.log('🔘 Interfaz de pago profesional creada');
                 
             } else {
                 console.warn('⚠️ No se encontró el contenedor del botón: o_culqi_checkout_placeholder');
@@ -278,6 +394,72 @@ paymentForm.include({
             document.getElementById('o_culqi_button_container')?.classList.remove('d-none');
 
             console.log('🎉 Configuración de Culqi v4 completada exitosamente');
+
+            // Agregar estilos CSS personalizados para la interfaz
+            const style = document.createElement('style');
+            style.textContent = `
+                .culqi-payment-container {
+                    max-width: 400px;
+                    margin: 0 auto;
+                }
+                
+                .culqi-payment-container .card {
+                    border-radius: 15px;
+                    transition: transform 0.2s ease;
+                }
+                
+                .culqi-payment-container .card:hover {
+                    transform: translateY(-2px);
+                }
+                
+                .payment-amount {
+                    background: linear-gradient(45deg, #28a745, #20c997);
+                    color: white;
+                    padding: 15px;
+                    border-radius: 10px;
+                    margin: 15px 0;
+                }
+                
+                #culqi-pay-button {
+                    border-radius: 25px;
+                    padding: 12px 30px;
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+                    background: linear-gradient(45deg, #007bff, #0056b3);
+                    border: none;
+                }
+                
+                #culqi-pay-button:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+                }
+                
+                #culqi-pay-button:disabled {
+                    opacity: 0.7;
+                    transform: none;
+                }
+                
+                .security-info {
+                    border-top: 1px solid #e9ecef;
+                    padding-top: 15px;
+                }
+                
+                .fa-shield-alt, .fa-clock {
+                    margin-right: 5px;
+                }
+                
+                /* Animación de carga */
+                @keyframes pulse {
+                    0% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                    100% { opacity: 1; }
+                }
+                
+                .loading-pulse {
+                    animation: pulse 1.5s infinite;
+                }
+            `;
+            document.head.appendChild(style);
 
         } catch (error) {
             console.error('❌ Error configurando Culqi:', error);
